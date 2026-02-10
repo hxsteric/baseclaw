@@ -1,0 +1,615 @@
+@import "tailwindcss";
+
+:root {
+  /* Backgrounds — deep charcoal base */
+  --bg-primary: #111114;
+  --bg-secondary: #1b1c1f;
+  --bg-tertiary: #222228;
+  --bg-elevated: #2a2a32;
+
+  /* Pastels */
+  --rose: #e08989;
+  --rose-dim: rgba(224, 137, 137, 0.12);
+  --rose-glow: rgba(224, 137, 137, 0.2);
+  --indigo: #7180c7;
+  --indigo-dim: rgba(113, 128, 199, 0.12);
+  --indigo-glow: rgba(113, 128, 199, 0.2);
+
+  /* Accent — use rose as primary accent */
+  --accent: #e08989;
+  --accent-hover: #e89e9e;
+  --accent-dim: rgba(224, 137, 137, 0.08);
+  --accent-glow: rgba(224, 137, 137, 0.15);
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.14);
+  --glass-shine: rgba(255, 255, 255, 0.06);
+
+  /* Text */
+  --text-primary: #f2f0ef;
+  --text-secondary: #9896a1;
+  --text-muted: #5a586a;
+  --text-ghost: #333340;
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+
+  /* Status */
+  --danger: #e08989;
+  --success: #7ec89e;
+  --warning: #e0c889;
+}
+
+@theme inline {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+html {
+  /* iOS safe areas for notch / home indicator */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* Prevent overscroll bounce on iOS */
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-display), system-ui, sans-serif;
+  /* Prevent text resize on orientation change */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+.text-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+}
+
+.text-heading {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
+.text-label {
+  font-family: var(--font-mono), monospace;
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.text-code {
+  font-family: var(--font-mono), monospace;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+}
+
+.text-body {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+/* ========================================
+   SCROLLBAR
+   ======================================== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ========================================
+   GLASSY EFFECTS
+   ======================================== */
+
+/* Base glass surface */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s ease;
+}
+.glass:hover {
+  border-color: var(--glass-border-hover);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Glassy button — frosted with inner shine */
+.glass-button {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.glass-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+.glass-button:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Glassy button with rose tint */
+.glass-button-rose {
+  background: linear-gradient(
+    135deg,
+    rgba(224, 137, 137, 0.15) 0%,
+    rgba(224, 137, 137, 0.04) 100%
+  );
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(224, 137, 137, 0.2);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.glass-button-rose::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(224, 137, 137, 0.1) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+.glass-button-rose:hover {
+  border-color: rgba(224, 137, 137, 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(224, 137, 137, 0.22) 0%,
+    rgba(224, 137, 137, 0.06) 100%
+  );
+  box-shadow: 0 8px 32px rgba(224, 137, 137, 0.15);
+}
+
+/* Glassy button with indigo tint */
+.glass-button-indigo {
+  background: linear-gradient(
+    135deg,
+    rgba(113, 128, 199, 0.12) 0%,
+    rgba(113, 128, 199, 0.03) 100%
+  );
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(113, 128, 199, 0.15);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.glass-button-indigo::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(113, 128, 199, 0.08) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+.glass-button-indigo:hover {
+  border-color: rgba(113, 128, 199, 0.3);
+  box-shadow: 0 8px 32px rgba(113, 128, 199, 0.12);
+}
+
+/* Cute button — gray default, rose on hover */
+.btn-cute {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+}
+.btn-cute::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%);
+  pointer-events: none;
+  border-radius: inherit;
+  transition: all 0.35s ease;
+}
+.btn-cute:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(224, 137, 137, 0.16) 0%,
+    rgba(224, 137, 137, 0.04) 100%
+  );
+  border-color: rgba(224, 137, 137, 0.25);
+  color: var(--rose);
+  box-shadow: 0 4px 20px rgba(224, 137, 137, 0.1);
+  transform: translateY(-1px);
+}
+.btn-cute:hover::before {
+  background: linear-gradient(180deg, rgba(224, 137, 137, 0.08) 0%, transparent 100%);
+}
+.btn-cute:active {
+  transform: scale(0.97) translateY(0);
+}
+.btn-cute:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-cute:disabled:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  box-shadow: none;
+  transform: none;
+}
+
+/* Cute button — active/selected state */
+.btn-cute-active {
+  background: linear-gradient(
+    135deg,
+    rgba(224, 137, 137, 0.18) 0%,
+    rgba(224, 137, 137, 0.05) 100%
+  );
+  border: 1px solid rgba(224, 137, 137, 0.25);
+  color: var(--rose);
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+}
+.btn-cute-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(224, 137, 137, 0.08) 0%, transparent 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.btn-cute-active:hover {
+  box-shadow: 0 4px 20px rgba(224, 137, 137, 0.12);
+}
+.btn-cute-active:active {
+  transform: scale(0.97);
+}
+
+/* Cute button — primary CTA (rose filled) */
+.btn-cute-primary {
+  background: linear-gradient(
+    135deg,
+    rgba(224, 137, 137, 0.2) 0%,
+    rgba(224, 137, 137, 0.08) 100%
+  );
+  border: 1px solid rgba(224, 137, 137, 0.3);
+  color: var(--rose);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+}
+.btn-cute-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(224, 137, 137, 0.1) 0%, transparent 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.btn-cute-primary:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(224, 137, 137, 0.28) 0%,
+    rgba(224, 137, 137, 0.1) 100%
+  );
+  border-color: rgba(224, 137, 137, 0.4);
+  box-shadow: 0 6px 28px rgba(224, 137, 137, 0.15);
+  transform: translateY(-1px);
+}
+.btn-cute-primary:active {
+  transform: scale(0.97) translateY(0);
+}
+.btn-cute-primary:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Glass card */
+.glass-card {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s ease;
+}
+.glass-card:hover {
+  border-color: var(--glass-border-hover);
+}
+
+/* ========================================
+   FLOATING ANIMATION (for decorative elements)
+   ======================================== */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-12px) rotate(3deg); }
+  50% { transform: translateY(-6px) rotate(-2deg); }
+  75% { transform: translateY(-16px) rotate(1deg); }
+}
+@keyframes float-slow-reverse {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(10px) rotate(-3deg); }
+  50% { transform: translateY(4px) rotate(2deg); }
+  75% { transform: translateY(14px) rotate(-1deg); }
+}
+@keyframes float-drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(8px, -10px) rotate(5deg); }
+  66% { transform: translate(-6px, -18px) rotate(-3deg); }
+}
+@keyframes scuttle {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  15% { transform: translate(6px, -4px) rotate(4deg); }
+  30% { transform: translate(-2px, -12px) rotate(-3deg); }
+  50% { transform: translate(10px, -8px) rotate(6deg); }
+  70% { transform: translate(-4px, -14px) rotate(-5deg); }
+  85% { transform: translate(3px, -6px) rotate(2deg); }
+}
+@keyframes wobble-float {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  20% { transform: translateY(-8px) rotate(-6deg) scale(1.03); }
+  40% { transform: translateY(-18px) rotate(4deg) scale(0.97); }
+  60% { transform: translateY(-10px) rotate(-3deg) scale(1.02); }
+  80% { transform: translateY(-20px) rotate(5deg) scale(0.98); }
+}
+@keyframes drift-sideways {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(14px, -6px) rotate(8deg); }
+  50% { transform: translate(-8px, -16px) rotate(-4deg); }
+  75% { transform: translate(10px, -10px) rotate(6deg); }
+}
+@keyframes bubble-rise {
+  0% { transform: translateY(0) scale(1); opacity: 0.6; }
+  50% { transform: translateY(-30px) scale(1.1); opacity: 0.4; }
+  100% { transform: translateY(-60px) scale(0.8); opacity: 0; }
+}
+@keyframes pinch {
+  0%, 70%, 100% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(-2px) rotate(-3deg); }
+  80% { transform: translateY(0) rotate(2deg); }
+  85% { transform: translateY(-4px) rotate(-2deg); }
+  90% { transform: translateY(0) rotate(0deg); }
+}
+.animate-float-1 {
+  animation: float-slow 8s ease-in-out infinite;
+}
+.animate-float-2 {
+  animation: float-slow-reverse 10s ease-in-out infinite;
+}
+.animate-float-3 {
+  animation: float-drift 12s ease-in-out infinite;
+}
+.animate-scuttle {
+  animation: scuttle 7s ease-in-out infinite;
+}
+.animate-wobble {
+  animation: wobble-float 9s ease-in-out infinite;
+}
+.animate-drift {
+  animation: drift-sideways 11s ease-in-out infinite;
+}
+.animate-bubble-rise {
+  animation: bubble-rise 6s ease-in-out infinite;
+}
+.animate-pinch {
+  animation: pinch 5s ease-in-out infinite;
+}
+
+/* ========================================
+   OTHER ANIMATIONS
+   ======================================== */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.6s ease-out forwards;
+}
+.animate-fade-up-delay-1 {
+  animation: fade-up 0.6s ease-out 0.15s forwards;
+  opacity: 0;
+}
+.animate-fade-up-delay-2 {
+  animation: fade-up 0.6s ease-out 0.3s forwards;
+  opacity: 0;
+}
+.animate-fade-up-delay-3 {
+  animation: fade-up 0.6s ease-out 0.45s forwards;
+  opacity: 0;
+}
+.animate-fade-up-delay-4 {
+  animation: fade-up 0.6s ease-out 0.6s forwards;
+  opacity: 0;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes logo-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+.animate-logo-breathe {
+  animation: logo-breathe 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.text-shimmer {
+  background: linear-gradient(90deg, var(--text-primary), var(--rose), var(--indigo), var(--text-primary));
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+/* Noise overlay */
+.noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Scroll progress bar */
+.scroll-progress-track {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.03);
+}
+.scroll-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--rose), var(--indigo));
+  box-shadow: 0 0 10px var(--rose-glow);
+  transition: width 0.05s linear;
+  border-radius: 0 2px 2px 0;
+}
+
+/* Typing dots */
+@keyframes bounce-dot {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+.typing-dot {
+  animation: bounce-dot 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0.32s; }
+
+/* ========================================
+   iOS TOGGLE SWITCH
+   ======================================== */
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  padding: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.toggle-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.toggle-switch.active {
+  background: linear-gradient(135deg, rgba(224, 137, 137, 0.25) 0%, rgba(224, 137, 137, 0.1) 100%);
+  border-color: rgba(224, 137, 137, 0.35);
+}
+.toggle-switch.active::after {
+  left: 20px;
+  background: var(--rose);
+  box-shadow: 0 1px 6px rgba(224, 137, 137, 0.4);
+}

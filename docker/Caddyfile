@@ -1,0 +1,4 @@
+# Replace with your actual domain
+ws.your-domain.com {
+    reverse_proxy clawdbot-proxy:3001
+}
