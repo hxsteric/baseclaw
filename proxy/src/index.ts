@@ -12,7 +12,7 @@ import {
   type Message,
 } from "./session-manager.js";
 
-const PORT = Number(process.env.PROXY_PORT) || 3002;
+const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
 
 const server = http.createServer((_req, res) => {
