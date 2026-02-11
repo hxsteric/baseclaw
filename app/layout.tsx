@@ -30,6 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: APP_NAME,
     description: APP_DESCRIPTION,
     other: {
+      "base:app_id": "698ccbcf0dbccf843e8642cc",
       "fc:miniapp": JSON.stringify({
         version: "next",
         imageUrl: `${url}/og-image.png`,
