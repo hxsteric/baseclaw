@@ -1,0 +1,58 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark background circle -->
+  <circle cx="100" cy="100" r="100" fill="#111114"/>
+
+  <!-- Subtle outer ring -->
+  <circle cx="100" cy="100" r="90" stroke="white" stroke-width="1.5" opacity="0.15"/>
+
+  <!-- Main body — rounded shell -->
+  <ellipse cx="100" cy="105" rx="45" ry="35" fill="white" opacity="0.25"/>
+  <ellipse cx="100" cy="100" rx="40" ry="30" fill="white" opacity="0.18"/>
+
+  <!-- Shell highlight -->
+  <ellipse cx="100" cy="93" rx="30" ry="20" fill="white" opacity="0.1"/>
+
+  <!-- Eyes — cute round -->
+  <circle cx="85" cy="85" r="8.75" fill="white" opacity="0.95"/>
+  <circle cx="115" cy="85" r="8.75" fill="white" opacity="0.95"/>
+  <!-- Pupils -->
+  <circle cx="87" cy="83.75" r="3.75" fill="#111114"/>
+  <circle cx="117" cy="83.75" r="3.75" fill="#111114"/>
+  <!-- Eye shine -->
+  <circle cx="82.5" cy="81.25" r="2" fill="white" opacity="0.9"/>
+  <circle cx="112.5" cy="81.25" r="2" fill="white" opacity="0.9"/>
+
+  <!-- Eye stalks -->
+  <line x1="85" y1="85" x2="77.5" y2="65" stroke="white" stroke-width="5" opacity="0.45" stroke-linecap="round"/>
+  <line x1="115" y1="85" x2="122.5" y2="65" stroke="white" stroke-width="5" opacity="0.45" stroke-linecap="round"/>
+
+  <!-- Left claw -->
+  <path
+    d="M55 105C42.5 92.5 30 97.5 27.5 107.5C25 117.5 35 120 45 115L55 110"
+    stroke="white"
+    stroke-width="6"
+    fill="none"
+    opacity="0.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Right claw -->
+  <path
+    d="M145 105C157.5 92.5 170 97.5 172.5 107.5C175 117.5 165 120 155 115L145 110"
+    stroke="white"
+    stroke-width="6"
+    fill="none"
+    opacity="0.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Tiny legs -->
+  <line x1="70" y1="125" x2="55" y2="140" stroke="white" stroke-width="3.75" opacity="0.3" stroke-linecap="round"/>
+  <line x1="80" y1="130" x2="67.5" y2="145" stroke="white" stroke-width="3.75" opacity="0.3" stroke-linecap="round"/>
+  <line x1="130" y1="125" x2="145" y2="140" stroke="white" stroke-width="3.75" opacity="0.3" stroke-linecap="round"/>
+  <line x1="120" y1="130" x2="132.5" y2="145" stroke="white" stroke-width="3.75" opacity="0.3" stroke-linecap="round"/>
+
+  <!-- Cute mouth — small smile -->
+  <path d="M92.5 115 Q100 122.5 107.5 115" stroke="white" stroke-width="3" fill="none" opacity="0.4" stroke-linecap="round"/>
+</svg>

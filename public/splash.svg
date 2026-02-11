@@ -1,0 +1,43 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="200" height="200" fill="#0a0a0f"/>
+
+  <!-- Subtle radial glow -->
+  <radialGradient id="glow">
+    <stop offset="0%" stop-color="rgba(224,137,137,0.12)"/>
+    <stop offset="100%" stop-color="transparent"/>
+  </radialGradient>
+  <circle cx="100" cy="85" r="80" fill="url(#glow)"/>
+
+  <!-- Crab body -->
+  <ellipse cx="100" cy="92" rx="32" ry="25" fill="white" opacity="0.2"/>
+  <ellipse cx="100" cy="88" rx="28" ry="21" fill="white" opacity="0.14"/>
+
+  <!-- Eyes -->
+  <circle cx="89" cy="78" r="6.5" fill="white" opacity="0.95"/>
+  <circle cx="111" cy="78" r="6.5" fill="white" opacity="0.95"/>
+  <circle cx="90.5" cy="76.8" r="2.8" fill="#0a0a0f"/>
+  <circle cx="112.5" cy="76.8" r="2.8" fill="#0a0a0f"/>
+  <circle cx="87.5" cy="75" r="1.5" fill="white" opacity="0.9"/>
+  <circle cx="109.5" cy="75" r="1.5" fill="white" opacity="0.9"/>
+
+  <!-- Eye stalks -->
+  <line x1="89" y1="78" x2="83" y2="62" stroke="white" stroke-width="3.5" opacity="0.4" stroke-linecap="round"/>
+  <line x1="111" y1="78" x2="117" y2="62" stroke="white" stroke-width="3.5" opacity="0.4" stroke-linecap="round"/>
+
+  <!-- Claws -->
+  <path d="M68 92C58 82 48 85 46 92C44 99 52 101 59 97L68 93" stroke="white" stroke-width="4.5" fill="none" opacity="0.45" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M132 92C142 82 152 85 154 92C156 99 148 101 141 97L132 93" stroke="white" stroke-width="4.5" fill="none" opacity="0.45" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Legs -->
+  <line x1="78" y1="108" x2="67" y2="118" stroke="white" stroke-width="2.5" opacity="0.25" stroke-linecap="round"/>
+  <line x1="85" y1="112" x2="76" y2="122" stroke="white" stroke-width="2.5" opacity="0.25" stroke-linecap="round"/>
+  <line x1="122" y1="108" x2="133" y2="118" stroke="white" stroke-width="2.5" opacity="0.25" stroke-linecap="round"/>
+  <line x1="115" y1="112" x2="124" y2="122" stroke="white" stroke-width="2.5" opacity="0.25" stroke-linecap="round"/>
+
+  <!-- Smile -->
+  <path d="M94 101 Q100 106 106 101" stroke="white" stroke-width="2" fill="none" opacity="0.35" stroke-linecap="round"/>
+
+  <!-- BASECLAW text -->
+  <text x="100" y="160" text-anchor="middle" fill="white" opacity="0.6" font-family="system-ui, sans-serif" font-weight="800" font-size="18" letter-spacing="4">BASECLAW</text>
+</svg>

@@ -1,0 +1,78 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#111114"/>
+
+  <!-- Subtle gradient overlay -->
+  <radialGradient id="bg-glow" cx="0.35" cy="0.4">
+    <stop offset="0%" stop-color="rgba(224,137,137,0.08)"/>
+    <stop offset="60%" stop-color="transparent"/>
+  </radialGradient>
+  <rect width="1200" height="630" fill="url(#bg-glow)"/>
+
+  <radialGradient id="bg-glow2" cx="0.7" cy="0.6">
+    <stop offset="0%" stop-color="rgba(113,128,199,0.06)"/>
+    <stop offset="60%" stop-color="transparent"/>
+  </radialGradient>
+  <rect width="1200" height="630" fill="url(#bg-glow2)"/>
+
+  <!-- Grid dots pattern -->
+  <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+    <circle cx="20" cy="20" r="0.8" fill="white" opacity="0.06"/>
+  </pattern>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+
+  <!-- Crab icon (centered-left area) -->
+  <g transform="translate(200, 180)">
+    <!-- Body -->
+    <ellipse cx="0" cy="12" rx="45" ry="35" fill="white" opacity="0.2"/>
+    <ellipse cx="0" cy="5" rx="40" ry="30" fill="white" opacity="0.14"/>
+
+    <!-- Eyes -->
+    <circle cx="-15" cy="-15" r="8.75" fill="white" opacity="0.95"/>
+    <circle cx="15" cy="-15" r="8.75" fill="white" opacity="0.95"/>
+    <circle cx="-13" cy="-17" r="3.75" fill="#111114"/>
+    <circle cx="17" cy="-17" r="3.75" fill="#111114"/>
+    <circle cx="-17.5" cy="-19" r="2" fill="white" opacity="0.9"/>
+    <circle cx="12.5" cy="-19" r="2" fill="white" opacity="0.9"/>
+
+    <!-- Eye stalks -->
+    <line x1="-15" y1="-15" x2="-22.5" y2="-35" stroke="white" stroke-width="5" opacity="0.4" stroke-linecap="round"/>
+    <line x1="15" y1="-15" x2="22.5" y2="-35" stroke="white" stroke-width="5" opacity="0.4" stroke-linecap="round"/>
+
+    <!-- Claws -->
+    <path d="M-45 5C-57.5 -7.5 -70 -2.5 -72.5 7.5C-75 17.5 -65 20 -55 15L-45 10" stroke="white" stroke-width="6" fill="none" opacity="0.45" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M45 5C57.5 -7.5 70 -2.5 72.5 7.5C75 17.5 65 20 55 15L45 10" stroke="white" stroke-width="6" fill="none" opacity="0.45" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Legs -->
+    <line x1="-30" y1="30" x2="-45" y2="45" stroke="white" stroke-width="3.5" opacity="0.25" stroke-linecap="round"/>
+    <line x1="-20" y1="35" x2="-32.5" y2="50" stroke="white" stroke-width="3.5" opacity="0.25" stroke-linecap="round"/>
+    <line x1="30" y1="30" x2="45" y2="45" stroke="white" stroke-width="3.5" opacity="0.25" stroke-linecap="round"/>
+    <line x1="20" y1="35" x2="32.5" y2="50" stroke="white" stroke-width="3.5" opacity="0.25" stroke-linecap="round"/>
+
+    <!-- Smile -->
+    <path d="M-7.5 20 Q0 27 7.5 20" stroke="white" stroke-width="2.5" fill="none" opacity="0.35" stroke-linecap="round"/>
+  </g>
+
+  <!-- Text area -->
+  <text x="480" y="260" fill="white" opacity="0.95" font-family="system-ui, sans-serif" font-weight="800" font-size="72" letter-spacing="-2">BASECLAW</text>
+  <text x="480" y="320" fill="white" opacity="0.4" font-family="system-ui, sans-serif" font-weight="400" font-size="28">Launch your own AI agent in one click</text>
+
+  <!-- Tags -->
+  <g transform="translate(480, 360)">
+    <rect x="0" y="0" width="80" height="32" rx="16" fill="white" fill-opacity="0.06" stroke="white" stroke-opacity="0.1"/>
+    <text x="40" y="21" text-anchor="middle" fill="white" opacity="0.5" font-family="monospace" font-size="11" letter-spacing="1">AI</text>
+
+    <rect x="96" y="0" width="120" height="32" rx="16" fill="white" fill-opacity="0.06" stroke="white" stroke-opacity="0.1"/>
+    <text x="156" y="21" text-anchor="middle" fill="white" opacity="0.5" font-family="monospace" font-size="11" letter-spacing="1">FARCASTER</text>
+
+    <rect x="232" y="0" width="90" height="32" rx="16" fill="white" fill-opacity="0.06" stroke="white" stroke-opacity="0.1"/>
+    <text x="277" y="21" text-anchor="middle" fill="white" opacity="0.5" font-family="monospace" font-size="11" letter-spacing="1">BASE</text>
+
+    <rect x="338" y="0" width="110" height="32" rx="16" fill="white" fill-opacity="0.06" stroke="white" stroke-opacity="0.1"/>
+    <text x="393" y="21" text-anchor="middle" fill="white" opacity="0.5" font-family="monospace" font-size="11" letter-spacing="1">OPENCLAW</text>
+  </g>
+
+  <!-- Bottom subtle line -->
+  <line x1="100" y1="560" x2="1100" y2="560" stroke="white" stroke-width="0.5" opacity="0.06"/>
+  <text x="600" y="590" text-anchor="middle" fill="white" opacity="0.2" font-family="monospace" font-size="12" letter-spacing="2">BUILT ON BASE</text>
+</svg>

@@ -32,14 +32,14 @@ export async function generateMetadata(): Promise<Metadata> {
     other: {
       "fc:miniapp": JSON.stringify({
         version: "next",
-        imageUrl: `${url}/og-image.png`,
+        imageUrl: `${url}/og-image.svg`,
         button: {
           title: "Launch Clawdbot",
           action: {
             type: "launch_miniapp",
             name: APP_NAME,
             url,
-            splashImageUrl: `${url}/splash.png`,
+            splashImageUrl: `${url}/splash.svg`,
             splashBackgroundColor: "#06060b",
           },
         },
