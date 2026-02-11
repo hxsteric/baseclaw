@@ -18,6 +18,8 @@ export async function streamCompletion(
       return streamAnthropic(model, apiKey, messages, callbacks);
     case "openai":
       return streamOpenAI(model, apiKey, messages, callbacks);
+    case "openrouter":
+      return streamOpenRouter(model, apiKey, messages, callbacks);
     case "kimi":
       return streamKimi(model, apiKey, messages, callbacks);
     default:
@@ -122,6 +124,77 @@ async function streamOpenAI(
   if (!res.ok) {
     const err = await res.text();
     callbacks.onError(`OpenAI API error (${res.status}): ${err}`);
+    return;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    callbacks.onError("No response body");
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let fullText = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") continue;
+
+      try {
+        const parsed = JSON.parse(data);
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullText += delta;
+          callbacks.onDelta(delta);
+        }
+      } catch {
+        // Skip unparseable lines
+      }
+    }
+  }
+
+  callbacks.onFinal(fullText);
+}
+
+async function streamOpenRouter(
+  model: string,
+  apiKey: string,
+  messages: Message[],
+  callbacks: StreamCallbacks
+): Promise<void> {
+  const body = {
+    model,
+    messages: messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+    stream: true,
+  };
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://baseclaw-v6kt.vercel.app",
+      "X-Title": "Baseclaw",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    callbacks.onError(`OpenRouter API error (${res.status}): ${err}`);
     return;
   }
 

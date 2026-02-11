@@ -37,6 +37,7 @@ export function ApiKeyForm() {
   const providers = [
     { id: "anthropic" as const, label: "Anthropic" },
     { id: "openai" as const, label: "OpenAI" },
+    { id: "openrouter" as const, label: "OpenRouter" },
     { id: "kimi" as const, label: "Kimi" },
   ];
 
@@ -58,7 +59,7 @@ export function ApiKeyForm() {
           {/* Provider */}
           <div className="animate-fade-up">
             <label className="text-label block mb-3">Provider</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {providers.map((p) => (
                 <button
                   key={p.id}
