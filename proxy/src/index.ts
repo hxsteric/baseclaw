@@ -14,6 +14,7 @@ import {
 
 const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
+const BRAVE_API_KEY = process.env.BRAVE_API_KEY || "";
 
 const server = http.createServer((_req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
@@ -103,6 +104,7 @@ wss.on("connection", (ws, req) => {
             session.apiKey,
             session.messages,
             {
+
               onDelta: (text) => {
                 send(ws, { type: "delta", runId, text });
               },
@@ -119,7 +121,8 @@ wss.on("connection", (ws, req) => {
               onError: (error) => {
                 send(ws, { type: "error", message: error });
               },
-            }
+            },
+            BRAVE_API_KEY || undefined
           );
           break;
         }

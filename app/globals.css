@@ -613,3 +613,38 @@ body {
   background: var(--rose);
   box-shadow: 0 1px 6px rgba(224, 137, 137, 0.4);
 }
+
+/* ========================================
+   FAQ ACCORDION (Framer-inspired)
+   ======================================== */
+
+/* Outer frosted glass container */
+.faq-container {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Inner wrapper with 2px gaps between items */
+.faq-items-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Individual FAQ item */
+.faq-item {
+  position: relative;
+}
+
+/* Subtle divider between items */
+.faq-item + .faq-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}

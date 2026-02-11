@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "./Providers";
 import { useAgentStore } from "@/hooks/useAgentStore";
 import { BackButton } from "./BackButton";
@@ -26,7 +27,31 @@ function getModelLabel(modelId: string): string {
 
 export function MyAgents() {
   const { setStep, setConfig, setActiveAgentId } = useApp();
-  const { agents, toggleAgent, updateLastUsed, getMessages, removeAgent } = useAgentStore();
+  const { agents, toggleAgent, updateLastUsed, getMessages, removeAgent, renameAgent } = useAgentStore();
+
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  function handleStartRename(agentId: string, currentName: string) {
+    setRenameId(agentId);
+    setRenameValue(currentName);
+  }
+
+  function handleConfirmRename() {
+    if (renameId && renameValue.trim()) {
+      renameAgent(renameId, renameValue.trim());
+    }
+    setRenameId(null);
+    setRenameValue("");
+  }
+
+  function handleConfirmDelete() {
+    if (deleteId) {
+      removeAgent(deleteId);
+    }
+    setDeleteId(null);
+  }
 
   function handleOpenAgent(agentId: string) {
     const agent = agents.find((a) => a.id === agentId);
@@ -157,15 +182,47 @@ export function MyAgents() {
                           </div>
                         </div>
 
-                        {/* Right: Toggle switch */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleAgent(agent.id);
-                          }}
-                          className={`toggle-switch shrink-0 mt-1 ${agent.enabled ? "active" : ""}`}
-                          aria-label={agent.enabled ? "Disable agent" : "Enable agent"}
-                        />
+                        {/* Right: Actions */}
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleAgent(agent.id);
+                            }}
+                            className={`toggle-switch shrink-0 ${agent.enabled ? "active" : ""}`}
+                            aria-label={agent.enabled ? "Disable agent" : "Enable agent"}
+                          />
+                          <div className="flex items-center gap-1">
+                            {/* Rename button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartRename(agent.id, agent.name);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                              aria-label="Rename agent"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-ghost)] hover:text-[var(--text-muted)]">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                            </button>
+                            {/* Delete button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteId(agent.id);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-[rgba(224,137,137,0.1)] transition-colors"
+                              aria-label="Delete agent"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-ghost)] hover:text-[var(--rose)]">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -176,6 +233,78 @@ export function MyAgents() {
           )}
         </div>
       </div>
+
+      {/* Rename modal */}
+      {renameId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
+          <div className="w-full max-w-xs glass rounded-2xl p-6 space-y-5 animate-fade-up">
+            <div className="text-center space-y-1.5">
+              <h2 className="text-heading text-base">Rename agent</h2>
+              <p className="text-code text-[10px] text-[var(--text-ghost)]">
+                give your agent a new name
+              </p>
+            </div>
+
+            <input
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="e.g. Code Helper, DeFi Advisor..."
+              autoFocus
+              className="w-full py-3 px-4 rounded-xl glass text-code text-sm text-[var(--text-primary)] placeholder:text-[var(--text-ghost)] focus:outline-none focus:border-[rgba(224,137,137,0.3)] transition-all bg-transparent"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleConfirmRename();
+                if (e.key === "Escape") { setRenameId(null); setRenameValue(""); }
+              }}
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setRenameId(null); setRenameValue(""); }}
+                className="flex-1 py-2.5 btn-cute text-code text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRename}
+                disabled={!renameValue.trim()}
+                className="flex-1 py-2.5 btn-cute-primary text-heading text-xs"
+              >
+                <span className="relative z-10">Rename</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
+          <div className="w-full max-w-xs glass rounded-2xl p-6 space-y-5 animate-fade-up">
+            <div className="text-center space-y-2">
+              <h2 className="text-heading text-base">Delete agent?</h2>
+              <p className="text-code text-[11px] text-[var(--text-muted)] leading-relaxed">
+                This will permanently delete the agent and all its chat history. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="flex-1 py-2.5 btn-cute-primary text-heading text-xs"
+              >
+                <span className="relative z-10">Keep</span>
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 py-2.5 btn-cute text-code text-xs text-[var(--rose)]"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

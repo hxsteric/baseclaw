@@ -1,12 +1,109 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useApp } from "./Providers";
 import { TextVideoMask } from "./TextVideoMask";
 import { FloatingCreatures } from "./FloatingCreatures";
 import { ScrollProgress } from "./ScrollProgress";
 import { BaseclawLogo } from "./BaseclawLogo";
+
+/* FAQ data */
+const FAQ_ITEMS = [
+  {
+    q: "What is Baseclaw?",
+    a: "Baseclaw is your personal AI assistant launcher built on Base. Connect your own API key, pick any model, and start chatting instantly — no sign-ups, no middleman. It's a native Farcaster miniapp that puts the power of AI directly in your hands.",
+  },
+  {
+    q: "What is OpenClaw?",
+    a: "OpenClaw is the open-source AI gateway behind Baseclaw. It provides a single, unified interface to connect to any AI model from any provider. Think of it as the engine under the hood — Baseclaw is the sleek car you drive.",
+  },
+  {
+    q: "What can Clawdbot do?",
+    a: "Clawdbot is your AI agent inside Baseclaw. It can write and analyze code, explain complex topics, help with DeFi research, draft content, brainstorm ideas, search the web for real-time data, and much more. It supports streaming responses so you see answers in real-time.",
+  },
+  {
+    q: "How do I get an API key?",
+    a: "Go to your chosen provider's website:\n\n• Anthropic → console.anthropic.com\n• OpenAI → platform.openai.com\n• OpenRouter → openrouter.ai (access all models with one key)\n• Kimi → platform.moonshot.cn\n\nSign up, navigate to the API Keys section, create a new key, and paste it into Baseclaw. That's it!",
+  },
+  {
+    q: "Which API provider is best?",
+    a: "OpenRouter is the best starting point — it gives you access to Claude, GPT-4o, Gemini, DeepSeek, Llama and more, all with a single API key. If you want the absolute best quality, go direct with Anthropic (Claude). For budget-friendly options, DeepSeek via OpenRouter is excellent.",
+  },
+  {
+    q: "Is my API key safe?",
+    a: "Yes. Your API key lives in memory only — it is never saved to disk, never logged, and never touches our servers. When you close the session, it's gone. Baseclaw acts as a direct bridge between you and the AI provider.",
+  },
+  {
+    q: "Does Baseclaw have web search?",
+    a: "Yes! Clawdbot has built-in web search powered by Brave Search. When you ask a question that needs real-time data — prices, news, current events — your agent will automatically search the web and answer with up-to-date information.",
+  },
+  {
+    q: "Is Baseclaw free?",
+    a: "Baseclaw itself is completely free. You only pay for the AI tokens you use through your own API key. Most providers offer free tiers or credits to get started — OpenRouter gives you free credits on signup.",
+  },
+];
+
+/* FAQ Accordion Item with spring animation */
+function FaqItem({ question, answer, isOpen, onToggle }: {
+  question: string;
+  answer: string;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setHeight(contentRef.current.scrollHeight);
+    }
+  }, [isOpen, answer]);
+
+  return (
+    <div className="faq-item">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 sm:px-6 py-4 sm:py-[18px] text-left cursor-pointer"
+      >
+        <span className={`text-heading text-[13px] sm:text-sm pr-4 transition-colors duration-300 ${isOpen ? "text-[var(--rose)]" : ""}`}>
+          {question}
+        </span>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          className={`shrink-0 transition-all duration-500 ${
+            isOpen
+              ? "text-[var(--rose)] rotate-45"
+              : "text-[var(--text-ghost)]"
+          }`}
+          style={{ transitionTimingFunction: "cubic-bezier(0.175, 0.885, 0.32, 1.275)" }}
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+      </button>
+      <div
+        className="overflow-hidden"
+        style={{
+          height: isOpen ? height : 0,
+          transition: "height 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+        }}
+      >
+        <div ref={contentRef} className="px-5 sm:px-6 pb-5 sm:pb-6">
+          <p className="text-body text-[12px] sm:text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
+            {answer}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* Interactive pill expand content */
 const PILL_CONTENT: Record<string, React.ReactNode> = {
@@ -48,6 +145,7 @@ export function OnboardingFlow() {
   const { skip } = useAuth();
   const { setStep } = useApp();
   const [expandedPill, setExpandedPill] = useState<string | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   function togglePill(label: string) {
     setExpandedPill(expandedPill === label ? null : label);
@@ -213,27 +311,27 @@ export function OnboardingFlow() {
         </div>
       </section>
 
-      {/* ===== FEATURES SECTION ===== */}
+      {/* ===== FAQ SECTION ===== */}
       <section className="relative z-10 px-5 sm:px-8 py-20 sm:py-24">
         <div className="max-w-md sm:max-w-lg mx-auto">
-          <p className="text-label tracking-[0.2em] text-center mb-3 sm:mb-4">Why Baseclaw</p>
-          <h2 className="text-display text-2xl sm:text-3xl text-center mb-12 sm:mb-16">
-            Built different.
+          <p className="text-label tracking-[0.2em] text-center mb-3 sm:mb-4">FAQ</p>
+          <h2 className="text-display text-2xl sm:text-3xl text-center mb-10 sm:mb-14">
+            Got questions?
           </h2>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {[
-              { icon: "🔐", title: "Privacy first", desc: "Your API keys never touch our servers" },
-              { icon: "⚡", title: "Instant deploy", desc: "No setup, no sign-ups, no waiting" },
-              { icon: "🤖", title: "Multi-model", desc: "Claude, GPT-4o, Kimi — switch anytime" },
-              { icon: "🌊", title: "Built on Base", desc: "Native Farcaster miniapp experience" },
-            ].map((feat) => (
-              <div key={feat.title} className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-2.5 sm:gap-3">
-                <span className="text-xl sm:text-2xl">{feat.icon}</span>
-                <h3 className="text-heading text-[13px] sm:text-sm">{feat.title}</h3>
-                <p className="text-body text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">{feat.desc}</p>
-              </div>
-            ))}
+          {/* Frosted glass container */}
+          <div className="faq-container rounded-[26px] overflow-hidden">
+            <div className="faq-items-wrapper">
+              {FAQ_ITEMS.map((item, i) => (
+                <FaqItem
+                  key={item.q}
+                  question={item.q}
+                  answer={item.a}
+                  isOpen={openFaq === i}
+                  onToggle={() => setOpenFaq(openFaq === i ? null : i)}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
