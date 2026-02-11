@@ -26,7 +26,7 @@ function getModelLabel(modelId: string): string {
 
 export function MyAgents() {
   const { setStep, setConfig, setActiveAgentId } = useApp();
-  const { agents, toggleAgent, updateLastUsed, getMessages } = useAgentStore();
+  const { agents, toggleAgent, updateLastUsed, getMessages, removeAgent } = useAgentStore();
 
   function handleOpenAgent(agentId: string) {
     const agent = agents.find((a) => a.id === agentId);

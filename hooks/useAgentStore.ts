@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { nanoid } from "nanoid";
 import type { SavedAgent, ChatMessage, UserConfig } from "@/lib/types";
+import { useApp } from "@/components/Providers";
 
 const AGENTS_KEY = "baseclaw_agents";
 const MESSAGES_KEY = "baseclaw_messages";
@@ -36,20 +37,35 @@ function persistAllMessages(msgs: Record<string, ChatMessage[]>) {
 }
 
 export function useAgentStore() {
-  const [agents, setAgents] = useState<SavedAgent[]>([]);
-  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
+  // Initialize directly from localStorage to avoid race conditions
+  const [agents, setAgents] = useState<SavedAgent[]>(() => loadAgents());
+  const initialized = useRef(false);
+  const { activeAgentId } = useApp();
 
-  // Load from localStorage on mount
+  // Persist agents whenever they change, but skip the initial load
   useEffect(() => {
-    setAgents(loadAgents());
-  }, []);
-
-  // Persist agents whenever they change
-  useEffect(() => {
-    if (agents.length > 0 || loadAgents().length > 0) {
-      persistAgents(agents);
+    if (!initialized.current) {
+      initialized.current = true;
+      return;
     }
+    persistAgents(agents);
   }, [agents]);
+
+  // Poll localStorage to sync across multiple hook instances within same tab
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const stored = loadAgents();
+      setAgents((current) => {
+        const currentJson = JSON.stringify(current);
+        const storedJson = JSON.stringify(stored);
+        if (currentJson !== storedJson) {
+          return stored;
+        }
+        return current;
+      });
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const addAgent = useCallback((config: UserConfig): SavedAgent => {
     const existing = loadAgents();
@@ -63,16 +79,16 @@ export function useAgentStore() {
       lastUsedAt: Date.now(),
     };
     const updated = [...existing, newAgent];
+    persistAgents(updated);
     setAgents(updated);
-    setActiveAgentId(newAgent.id);
     return newAgent;
   }, []);
 
   const removeAgent = useCallback((id: string) => {
-    setAgents((prev) => {
-      const updated = prev.filter((a) => a.id !== id);
-      return updated;
-    });
+    const existing = loadAgents();
+    const updated = existing.filter((a) => a.id !== id);
+    persistAgents(updated);
+    setAgents(updated);
     // Also remove messages
     const allMsgs = loadAllMessages();
     delete allMsgs[id];
@@ -80,15 +96,30 @@ export function useAgentStore() {
   }, []);
 
   const toggleAgent = useCallback((id: string) => {
-    setAgents((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a))
+    const existing = loadAgents();
+    const updated = existing.map((a) =>
+      a.id === id ? { ...a, enabled: !a.enabled } : a
     );
+    persistAgents(updated);
+    setAgents(updated);
   }, []);
 
   const updateLastUsed = useCallback((id: string) => {
-    setAgents((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, lastUsedAt: Date.now() } : a))
+    const existing = loadAgents();
+    const updated = existing.map((a) =>
+      a.id === id ? { ...a, lastUsedAt: Date.now() } : a
     );
+    persistAgents(updated);
+    setAgents(updated);
+  }, []);
+
+  const renameAgent = useCallback((id: string, newName: string) => {
+    const existing = loadAgents();
+    const updated = existing.map((a) =>
+      a.id === id ? { ...a, name: newName } : a
+    );
+    persistAgents(updated);
+    setAgents(updated);
   }, []);
 
   const getMessages = useCallback((agentId: string): ChatMessage[] => {
@@ -106,17 +137,17 @@ export function useAgentStore() {
     return loadAgents().length > 0;
   }, []);
 
+  // Use activeAgentId from Providers context
   const activeAgent = agents.find((a) => a.id === activeAgentId) || null;
 
   return {
     agents,
-    activeAgentId,
     activeAgent,
-    setActiveAgentId,
     addAgent,
     removeAgent,
     toggleAgent,
     updateLastUsed,
+    renameAgent,
     getMessages,
     saveMessages,
     hasAgents,
