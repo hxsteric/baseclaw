@@ -2,21 +2,19 @@
 
 import { useCallback } from "react";
 import { useApp } from "@/components/Providers";
-import { useAgentStore } from "@/hooks/useAgentStore";
 import type { UserConfig } from "@/lib/types";
 
 export function useConfig() {
   const { config, setConfig, setStep, setActiveAgentId } = useApp();
-  const { addAgent } = useAgentStore();
 
   const saveConfig = useCallback(
     (cfg: UserConfig) => {
       setConfig(cfg);
-      const agent = addAgent(cfg);
-      setActiveAgentId(agent.id);
+      // Don't create agent yet — user saves from chat via "Save Agent" button
+      setActiveAgentId(null);
       setStep("loading");
     },
-    [setConfig, setStep, addAgent, setActiveAgentId]
+    [setConfig, setStep, setActiveAgentId]
   );
 
   const clearConfig = useCallback(() => {
