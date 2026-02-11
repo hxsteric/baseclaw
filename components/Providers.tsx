@@ -44,7 +44,7 @@ export function Providers({ children }: { children: ReactNode }) {
     async function init() {
       try {
         const { sdk } = await import("@farcaster/miniapp-sdk");
-        await sdk.actions.ready();
+        sdk.actions.ready();
       } catch {
         // Not in a Farcaster client — continue for dev/testing
       }
