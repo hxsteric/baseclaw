@@ -11,6 +11,13 @@ import {
   getSessionHistory,
   type Message,
 } from "./session-manager.js";
+import { checkSubscription, trackUsage, getManagedKey } from "./subscription-check.js";
+import {
+  resolveModel,
+  isMetered,
+  getProviderKey,
+  type SubscriptionPlan,
+} from "./ai-router.js";
 
 const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
@@ -42,29 +49,82 @@ wss.on("connection", (ws, req) => {
 
       switch (data.action) {
         case "config": {
-          if (!data.apiKey || !data.model || !data.provider) {
-            send(ws, { type: "error", message: "Missing config fields (apiKey, model, provider)" });
-            return;
-          }
+          const keyMode = data.keyMode || "byok";
 
-          const existing = getSession(sessionId);
-          if (existing) {
-            updateSessionConfig(sessionId, {
-              model: data.model,
-              provider: data.provider,
-              apiKey: data.apiKey,
+          if (keyMode === "managed") {
+            // Managed mode — validate subscription, agent config resolves models per-message
+            if (!data.fid) {
+              send(ws, { type: "error", message: "Missing fid for managed mode" });
+              return;
+            }
+
+            const subscription = await checkSubscription(data.fid);
+            if (!subscription.valid) {
+              send(ws, { type: "error", message: subscription.error || "Subscription not active" });
+              return;
+            }
+
+            // Verify at least one provider key is configured
+            const anthropicKey = getManagedKey("anthropic");
+            if (!anthropicKey) {
+              send(ws, { type: "error", message: "Managed AI service not configured" });
+              return;
+            }
+
+            // Store session — model/provider get resolved per-message by the router
+            const sessionConfig = {
+              model: "claude-opus-4-5-20250514",
+              provider: "anthropic",
+              apiKey: anthropicKey,
+              keyMode: "managed" as const,
+              fid: data.fid,
+              plan: subscription.plan,
+            };
+
+            const existing = getSession(sessionId);
+            if (existing) {
+              updateSessionConfig(sessionId, sessionConfig);
+            } else {
+              createSession(sessionId, sessionConfig);
+            }
+
+            sessionReady = true;
+            send(ws, {
+              type: "connected",
+              sessionId,
+              plan: subscription.plan,
+              budgetRemaining: subscription.budgetRemaining,
+              costUsd: subscription.costUsd,
             });
+            console.log(`Session configured (managed): ${sessionId} fid=${data.fid} plan=${subscription.plan} budget=$${subscription.budgetRemaining?.toFixed(2)}`);
           } else {
-            createSession(sessionId, {
-              model: data.model,
-              provider: data.provider,
-              apiKey: data.apiKey,
-            });
-          }
+            // BYOK mode — existing flow
+            if (!data.apiKey || !data.model || !data.provider) {
+              send(ws, { type: "error", message: "Missing config fields (apiKey, model, provider)" });
+              return;
+            }
 
-          sessionReady = true;
-          send(ws, { type: "connected", sessionId });
-          console.log(`Session configured: ${sessionId} (${data.provider}/${data.model})`);
+            const existing = getSession(sessionId);
+            if (existing) {
+              updateSessionConfig(sessionId, {
+                model: data.model,
+                provider: data.provider,
+                apiKey: data.apiKey,
+                keyMode: "byok",
+              });
+            } else {
+              createSession(sessionId, {
+                model: data.model,
+                provider: data.provider,
+                apiKey: data.apiKey,
+                keyMode: "byok",
+              });
+            }
+
+            sessionReady = true;
+            send(ws, { type: "connected", sessionId });
+            console.log(`Session configured (byok): ${sessionId} (${data.provider}/${data.model})`);
+          }
           break;
         }
 
@@ -86,6 +146,15 @@ wss.on("connection", (ws, req) => {
             return;
           }
 
+          // If managed mode, re-check subscription before each request
+          if (session.keyMode === "managed" && session.fid) {
+            const sub = await checkSubscription(session.fid);
+            if (!sub.valid) {
+              send(ws, { type: "error", message: sub.error || "Subscription limit reached" });
+              return;
+            }
+          }
+
           // Add user message
           const userMsg: Message = {
             id: nanoid(),
@@ -97,16 +166,47 @@ wss.on("connection", (ws, req) => {
 
           const runId = nanoid();
 
+          // Determine actual model/provider/key to use
+          let actualModel = session.model;
+          let actualProvider = session.provider;
+          let actualKey = session.apiKey;
+          let modelRole: string | undefined;
+
+          if (session.keyMode === "managed") {
+            // Classify task and resolve model based on budget
+            const plan = (session.plan || "starter") as SubscriptionPlan;
+            const sub = await checkSubscription(session.fid!);
+            const currentCost = sub.costUsd || 0;
+            const extraBudget = sub.extraBudget || 0;
+
+            const resolved = resolveModel(message, plan, currentCost, extraBudget);
+            const resolvedKey = getProviderKey(resolved.provider);
+
+            if (resolvedKey) {
+              actualModel = resolved.model;
+              actualProvider = resolved.provider;
+              actualKey = resolvedKey;
+              modelRole = resolved.role;
+
+              if (resolved.budgetExceeded) {
+                console.log(`[Router] fid=${session.fid} tier=${resolved.tier} budget exceeded ($${currentCost.toFixed(2)}) → ${resolved.provider}/${resolved.model}`);
+              } else {
+                console.log(`[Router] fid=${session.fid} tier=${resolved.tier} → ${resolved.provider}/${resolved.model} ($${currentCost.toFixed(2)} spent)`);
+              }
+            } else {
+              console.error(`[Router] No key for ${resolved.provider}, using session default`);
+            }
+          }
+
           // Stream AI response
           await streamCompletion(
-            session.provider,
-            session.model,
-            session.apiKey,
+            actualProvider,
+            actualModel,
+            actualKey,
             session.messages,
             {
-
               onDelta: (text) => {
-                send(ws, { type: "delta", runId, text });
+                send(ws, { type: "delta", runId, text, ...(modelRole ? { modelRole } : {}) });
               },
               onFinal: (fullText) => {
                 const assistantMsg: Message = {
@@ -116,7 +216,24 @@ wss.on("connection", (ws, req) => {
                   timestamp: Date.now(),
                 };
                 addMessage(sessionId, assistantMsg);
-                send(ws, { type: "final", runId, message: fullText });
+                send(ws, {
+                  type: "final",
+                  runId,
+                  message: fullText,
+                  model: actualModel,
+                  ...(modelRole ? { modelRole } : {}),
+                });
+
+                // Track usage for managed sessions
+                if (session.keyMode === "managed" && session.fid) {
+                  const inputTokens = Math.ceil(message.length / 4);
+                  const outputTokens = Math.ceil(fullText.length / 4);
+                  trackUsage(session.fid, inputTokens, outputTokens, actualModel).catch((err) => {
+                    console.error("Usage tracking error:", err);
+                  });
+                  const metered = isMetered(actualModel);
+                  console.log(`[Router] Usage tracked: fid=${session.fid} model=${actualModel} metered=${metered} in=${inputTokens} out=${outputTokens}`);
+                }
               },
               onError: (error) => {
                 send(ws, { type: "error", message: error });

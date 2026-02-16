@@ -10,7 +10,7 @@ interface UseChatOptions {
   onMessagesUpdate?: (messages: ChatMessage[]) => void;
 }
 
-export function useChat(config: UserConfig | null, token: string | null, options?: UseChatOptions) {
+export function useChat(config: UserConfig | null, token: string | null, fid?: number | null, options?: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>(options?.initialMessages || []);
   const [isConnected, setIsConnected] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -27,14 +27,22 @@ export function useChat(config: UserConfig | null, token: string | null, options
 
     ws.onopen = () => {
       // Send config on connect
-      ws.send(
-        JSON.stringify({
-          action: "config",
-          model: config.model,
-          apiKey: config.apiKey,
-          provider: config.provider,
-        })
-      );
+      const configMsg: Record<string, unknown> = {
+        action: "config",
+        model: config.model,
+        provider: config.provider,
+        keyMode: config.keyMode || "byok",
+      };
+
+      if (config.keyMode === "managed") {
+        // Managed mode — send fid instead of apiKey
+        configMsg.fid = fid;
+      } else {
+        // BYOK mode — send user's API key
+        configMsg.apiKey = config.apiKey;
+      }
+
+      ws.send(JSON.stringify(configMsg));
     };
 
     ws.onmessage = (event) => {

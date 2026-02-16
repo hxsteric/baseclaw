@@ -32,7 +32,7 @@ export function ChatInterface() {
     [activeAgentId, saveMessages]
   );
 
-  const { messages, isConnected, isStreaming, sendMessage } = useChat(config, auth.token, {
+  const { messages, isConnected, isStreaming, sendMessage } = useChat(config, auth.token, auth.fid, {
     initialMessages,
     onMessagesUpdate,
   });
@@ -47,6 +47,7 @@ export function ChatInterface() {
 
   const modelLabel = config?.model?.split("/").pop() || config?.model || "agent";
   const agentDisplayName = activeAgent?.name || "New Agent";
+  const isManaged = config?.keyMode === "managed";
 
   // Save Agent handler
   function handleSaveAgent() {
@@ -133,6 +134,11 @@ export function ChatInterface() {
           <span className="text-[9px] font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>B</span>
         </div>
         <h1 className="text-code text-xs text-[var(--text-secondary)]">{agentDisplayName} — {modelLabel}</h1>
+        {isManaged && (
+          <span className="text-code text-[8px] px-1.5 py-0.5 rounded bg-[rgba(224,137,137,0.15)] text-[var(--rose)]">
+            managed
+          </span>
+        )}
         <div className="flex items-center gap-1.5 ml-1">
           <span className="text-code text-[9px] text-[var(--text-ghost)]">live</span>
           <div className="h-1.5 w-1.5 rounded-full bg-[var(--success)] animate-pulse-glow" />

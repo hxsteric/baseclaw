@@ -61,6 +61,10 @@ export async function streamCompletion(
       return streamOpenRouter(model, apiKey, messages, callbacks, braveApiKey);
     case "kimi":
       return streamKimi(model, apiKey, messages, callbacks, braveApiKey);
+    case "deepseek":
+      return streamDeepSeek(model, apiKey, messages, callbacks, braveApiKey);
+    case "google":
+      return streamGoogle(model, apiKey, messages, callbacks);
     default:
       callbacks.onError(`Unsupported provider: ${provider}`);
   }
@@ -333,6 +337,107 @@ async function streamKimi(
     "https://api.moonshot.cn/v1/chat/completions",
     "Kimi"
   );
+}
+
+// ---------- DeepSeek ----------
+
+async function streamDeepSeek(
+  model: string,
+  apiKey: string,
+  messages: Message[],
+  callbacks: StreamCallbacks,
+  braveApiKey?: string
+): Promise<void> {
+  await streamOpenAICompatible(
+    "https://api.deepseek.com/v1/chat/completions",
+    {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    model,
+    messages,
+    callbacks,
+    braveApiKey,
+    apiKey,
+    "https://api.deepseek.com/v1/chat/completions",
+    "DeepSeek"
+  );
+}
+
+// ---------- Google (Gemini) ----------
+
+async function streamGoogle(
+  model: string,
+  apiKey: string,
+  messages: Message[],
+  callbacks: StreamCallbacks
+): Promise<void> {
+  // Convert messages to Gemini format
+  const contents = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const body = {
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+    },
+  };
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    callbacks.onError(`Google Gemini API error (${res.status}): ${err}`);
+    return;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    callbacks.onError("No response body");
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let fullText = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]" || !data) continue;
+
+      try {
+        const parsed = JSON.parse(data);
+        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          fullText += text;
+          callbacks.onDelta(text);
+        }
+      } catch {
+        // Skip unparseable lines
+      }
+    }
+  }
+
+  callbacks.onFinal(fullText);
 }
 
 // ---------- Shared OpenAI-compatible streaming with tool call support ----------

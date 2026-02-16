@@ -241,6 +241,17 @@ export function OnboardingFlow() {
               <span className="relative z-10">Launch your Clawdbot</span>
             </button>
             <button
+              onClick={() => setStep("plans")}
+              className="btn-cute w-full py-3.5 text-heading text-[13px] sm:text-sm tracking-tight flex items-center justify-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+              <span>View Plans</span>
+            </button>
+            <button
               onClick={() => setStep("agents")}
               className="btn-cute w-full py-3.5 text-heading text-[13px] sm:text-sm tracking-tight flex items-center justify-center gap-2"
             >
