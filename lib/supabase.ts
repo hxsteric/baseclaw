@@ -1,16 +1,15 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.PROXY_SUPABASE_URL || "";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.PROXY_SUPABASE_KEY || "";
-
 let _supabase: SupabaseClient | null = null;
 
 function getSupabase(): SupabaseClient {
   if (!_supabase) {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-      throw new Error("Supabase env vars missing (SUPABASE_URL, SUPABASE_SERVICE_KEY)");
+    const url = process.env.SUPABASE_URL || process.env.PROXY_SUPABASE_URL || "";
+    const key = process.env.SUPABASE_SERVICE_KEY || process.env.PROXY_SUPABASE_KEY || "";
+    if (!url || !key) {
+      throw new Error(`Supabase env vars missing (url=${url ? "set" : "MISSING"}, key=${key ? "set" : "MISSING"})`);
     }
-    _supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    _supabase = createClient(url, key);
   }
   return _supabase;
 }
