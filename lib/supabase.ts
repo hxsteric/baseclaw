@@ -155,6 +155,31 @@ function getCurrentPeriod(): string {
 
 // ---------- Payments ----------
 
+// ---------- Waitlist ----------
+
+export async function addToWaitlist(email: string) {
+  // Check if already on waitlist
+  const { data: existing } = await getSupabase()
+    .from("waitlist")
+    .select("id")
+    .eq("email", email.toLowerCase().trim())
+    .single();
+
+  if (existing) {
+    return { alreadyExists: true };
+  }
+
+  const { error } = await getSupabase().from("waitlist").insert({
+    email: email.toLowerCase().trim(),
+    created_at: new Date().toISOString(),
+  });
+
+  if (error) throw error;
+  return { alreadyExists: false };
+}
+
+// ---------- Payments ----------
+
 export async function recordPayment(
   fid: number,
   amountUsd: number,

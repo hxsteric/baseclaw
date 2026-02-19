@@ -1,16 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { APP_NAME, APP_DESCRIPTION, APP_URL } from "@/lib/constants";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+const inter = Inter({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-title",
+  subsets: ["latin"],
+  weight: ["700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "700"],
@@ -58,7 +64,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${dmSans.variable} ${ibmPlexMono.variable} antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

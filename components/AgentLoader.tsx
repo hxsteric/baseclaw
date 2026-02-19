@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { BackButton } from "./BackButton";
+import { AsciiCrab } from "./AsciiCrab";
 
 interface AgentLoaderProps {
   onComplete: () => void;
@@ -57,20 +58,8 @@ export function AgentLoader({ onComplete, onCancel }: AgentLoaderProps) {
       <BackButton onClick={handleCancel} label="Cancel" />
 
       <div className="w-full max-w-xs flex flex-col items-center gap-8">
-        {/* Crab icon pulsing */}
-        <div className="relative">
-          <div className="h-16 w-16 rounded-2xl glass flex items-center justify-center">
-            <span className="text-display text-2xl text-[var(--rose)]">B</span>
-          </div>
-          <div
-            className="absolute inset-0 rounded-2xl"
-            style={{
-              background: `radial-gradient(circle, var(--rose-glow) 0%, transparent 70%)`,
-              animation: "pulse-glow 2s ease-in-out infinite",
-              opacity: 0.5,
-            }}
-          />
-        </div>
+        {/* ASCII Crab — animated loading mascot */}
+        <AsciiCrab scale={14} />
 
         {/* Progress bar */}
         <div className="w-full space-y-3">

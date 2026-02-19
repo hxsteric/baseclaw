@@ -13,6 +13,7 @@
     "@farcaster/miniapp-sdk": "^0.2.3",
     "@supabase/supabase-js": "^2.95.3",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.34.1",
     "nanoid": "^5.1.6",
     "next": "16.1.6",
     "react": "19.2.3",
