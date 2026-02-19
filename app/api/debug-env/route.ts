@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const env = process.env;
-  return NextResponse.json({
-    SUPABASE_URL: env["SUPABASE_URL"] ? "set" : "MISSING",
-    SUPABASE_SERVICE_KEY: env["SUPABASE_SERVICE_KEY"] ? "set" : "MISSING",
-    PROXY_SUPABASE_URL: env["PROXY_SUPABASE_URL"] ? "set" : "MISSING",
-    PROXY_SUPABASE_KEY: env["PROXY_SUPABASE_KEY"] ? "set" : "MISSING",
-    SB_KEY: env["SB_KEY"] ? "set" : "MISSING",
-    // Show first 10 chars to verify it's the right type of key
-    KEY_PREFIX: (env["SB_KEY"] || env["SUPABASE_SERVICE_KEY"] || env["PROXY_SUPABASE_KEY"] || "EMPTY").substring(0, 10) + "...",
-  });
+  // Dump ALL env var names that might be related to supabase or keys
+  const allKeys = Object.keys(process.env).filter(
+    (k) =>
+      k.includes("SUPABASE") ||
+      k.includes("SB_") ||
+      k.includes("_KEY") ||
+      k.includes("DATABASE")
+  );
+
+  const result: Record<string, string> = {};
+  for (const k of allKeys) {
+    const val = process.env[k] || "";
+    result[k] = val ? `set (${val.substring(0, 8)}...)` : "EMPTY";
+  }
+
+  result["_TOTAL_ENV_VARS"] = String(Object.keys(process.env).length);
+  result["_MATCHED_VARS"] = String(allKeys.length);
+
+  return NextResponse.json(result);
 }
