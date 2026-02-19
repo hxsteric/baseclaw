@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { PixelCrab } from "./PixelCrab";
 
 /*
   CrabHero — Floating 3D Crab Aquarium Background
@@ -28,6 +29,7 @@ export function CrabHero() {
   const shadowRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
 
   const state = useRef({
     x: 0,
@@ -181,8 +183,22 @@ export function CrabHero() {
     if (!video) return;
     video.play().catch(() => {
       video.muted = true;
-      video.play().catch(() => {});
+      video.play().catch(() => {
+        // Video can't play at all — fall back to PixelCrab
+        setVideoFailed(true);
+        setVideoReady(true);
+      });
     });
+
+    // Timeout fallback: if video hasn't loaded after 3s, show PixelCrab
+    const timeout = setTimeout(() => {
+      if (!videoRef.current || videoRef.current.readyState < 2) {
+        setVideoFailed(true);
+        setVideoReady(true);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timeout);
   }, []);
 
   return (
@@ -223,22 +239,38 @@ export function CrabHero() {
           transition: "opacity 0.8s ease-out",
         }}
       >
-        <video
-          ref={videoRef}
-          src="/crab-v2.webm"
-          autoPlay
-          loop
-          muted
-          playsInline
-          onCanPlayThrough={() => setVideoReady(true)}
-          onLoadedData={() => setVideoReady(true)}
-          style={{
+        {videoFailed ? (
+          <div style={{
             width: "100%",
             height: "100%",
-            objectFit: "contain",
-            filter: "contrast(1.05) saturate(1.08) brightness(1.02)",
-          }}
-        />
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            <PixelCrab size={getCrabSize() < 200 ? 10 : 16} />
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            src="/crab-v2.webm"
+            autoPlay
+            loop
+            muted
+            playsInline
+            onCanPlayThrough={() => setVideoReady(true)}
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => {
+              setVideoFailed(true);
+              setVideoReady(true);
+            }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              filter: "contrast(1.05) saturate(1.08) brightness(1.02)",
+            }}
+          />
+        )}
       </div>
     </>
   );
