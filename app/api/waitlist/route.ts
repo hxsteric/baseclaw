@@ -29,8 +29,9 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "You've been added to the waitlist!",
     });
-  } catch (error) {
-    console.error("Waitlist error:", error);
-    return NextResponse.json({ error: "Failed to join waitlist" }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Waitlist error:", msg, error);
+    return NextResponse.json({ error: `Failed to join waitlist: ${msg}` }, { status: 500 });
   }
 }
