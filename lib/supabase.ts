@@ -4,8 +4,10 @@ let _supabase: SupabaseClient | null = null;
 
 function getSupabase(): SupabaseClient {
   if (!_supabase) {
-    const url = process.env.SUPABASE_URL || process.env.PROXY_SUPABASE_URL || "";
-    const key = process.env.SUPABASE_SERVICE_KEY || process.env.PROXY_SUPABASE_KEY || "";
+    // Use bracket notation so Next.js doesn't inline these at build time
+    const env = process.env;
+    const url = env["SUPABASE_URL"] || env["PROXY_SUPABASE_URL"] || "";
+    const key = env["SUPABASE_SERVICE_KEY"] || env["PROXY_SUPABASE_KEY"] || "";
     if (!url || !key) {
       throw new Error(`Supabase env vars missing (url=${url ? "set" : "MISSING"}, key=${key ? "set" : "MISSING"})`);
     }
