@@ -582,8 +582,6 @@ function WaitlistModal({ onClose }: { onClose: () => void }) {
 export function PricingSection() {
   const { setStep } = useApp();
   const { skip } = useAuth();
-  const [showWaitlist, setShowWaitlist] = useState(false);
-
   function handleTierAction(tierId: string) {
     switch (tierId) {
       case "free":
@@ -595,18 +593,14 @@ export function PricingSection() {
         setStep("plans");
         break;
       case "pro":
-        // Open waitlist email modal
-        setShowWaitlist(true);
+        // Redirect to standalone waitlist page
+        window.location.href = "/waitlist";
         break;
     }
   }
 
   return (
     <section className="relative z-10 w-full px-5 sm:px-6 lg:px-12 py-20">
-      {/* Waitlist modal */}
-      <AnimatePresence>
-        {showWaitlist && <WaitlistModal onClose={() => setShowWaitlist(false)} />}
-      </AnimatePresence>
       {/* Section label */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
