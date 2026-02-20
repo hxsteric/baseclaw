@@ -66,6 +66,20 @@ export function ApiKeyForm() {
         </div>
       </div>
 
+      {/* Paid user banner */}
+      {isPaid && (
+        <div className="px-5 sm:px-8 pb-2">
+          <div className="max-w-sm mx-auto">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[rgba(74,222,128,0.08)] border border-[rgba(74,222,128,0.2)]">
+              <div className="h-2 w-2 rounded-full bg-[var(--success)] shrink-0" />
+              <p className="text-code text-[11px] text-[var(--success)]">
+                {profile?.plan} plan active — select Managed and launch!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col px-5 sm:px-8 py-6 sm:py-8 overflow-y-auto">
         <form onSubmit={handleSubmit} className="w-full max-w-sm mx-auto space-y-7 sm:space-y-8">
 

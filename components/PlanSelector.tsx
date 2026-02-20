@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "./Providers";
 import { useSubscription } from "@/hooks/useSubscription";
 import { PLANS, getBudgetPercent, getRemainingBudget, getTotalBudget, type PlanConfig } from "@/lib/subscription";
@@ -40,6 +41,8 @@ function PlanCard({
 }) {
   const isCurrent = currentPlan === plan.id;
   const isFree = plan.id === "free";
+  const currentTier = currentPlan ? (PLANS[currentPlan]?.tier ?? 0) : 0;
+  const isUpgrade = plan.tier > currentTier && currentTier > 0;
 
   return (
     <div
@@ -113,7 +116,7 @@ function PlanCard({
           className="btn-cute-primary w-full py-3 text-heading text-sm"
         >
           <span className="relative z-10">
-            {loading ? "Processing..." : `Subscribe — ${plan.price} USDC/mo`}
+            {loading ? "Processing..." : isUpgrade ? `Upgrade — ${plan.price} USDC/mo` : `Subscribe — ${plan.price} USDC/mo`}
           </span>
         </button>
       )}
@@ -223,6 +226,8 @@ export function PlanSelector() {
   const { profile, usage, loading, refresh } = useSubscription();
   const [subscribing, setSubscribing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [activatedPlan, setActivatedPlan] = useState<string | null>(null);
 
   async function handleSelect(plan: Plan) {
     if (plan === "free") {
@@ -263,7 +268,12 @@ export function PlanSelector() {
 
       if (!res.ok) throw new Error("Failed to activate subscription");
 
-      setStep("setup");
+      // Refresh profile so isPaid updates everywhere
+      await refresh();
+
+      // Show success popup
+      setActivatedPlan(PLANS[plan].name);
+      setPaymentSuccess(true);
     } catch (err) {
       console.error("Payment error:", err);
       setPaymentError(err instanceof Error ? err.message : "Payment failed");
@@ -357,6 +367,18 @@ export function PlanSelector() {
           </div>
         )}
 
+        {/* Launch Agent button for paid users */}
+        {profile && profile.plan !== "free" && (
+          <div className="w-full max-w-lg mx-auto mt-6">
+            <button
+              onClick={() => setStep("setup")}
+              className="btn-cute-primary w-full py-3.5 text-heading text-[15px] tracking-tight"
+            >
+              <span className="relative z-10">Launch Agent →</span>
+            </button>
+          </div>
+        )}
+
         {/* Footer note */}
         <div className="w-full max-w-lg mx-auto mt-6 text-center">
           <p className="text-code text-[10px] text-[var(--text-ghost)]">
@@ -364,6 +386,56 @@ export function PlanSelector() {
           </p>
         </div>
       </div>
+
+      {/* Payment success popup */}
+      <AnimatePresence>
+        {paymentSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-5"
+            style={{ background: "rgba(0, 0, 0, 0.8)", backdropFilter: "blur(8px)" }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-sm glass rounded-2xl p-6 text-center space-y-5"
+            >
+              {/* Success icon */}
+              <div className="flex items-center justify-center mx-auto w-14 h-14 rounded-full bg-[rgba(74,222,128,0.15)]">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </div>
+
+              <div>
+                <h3 className="text-heading text-lg mb-1">Payment Successful!</h3>
+                <p className="text-body text-sm text-[var(--text-secondary)]">
+                  Your <span className="text-[var(--rose)] font-semibold">{activatedPlan}</span> plan is now active.
+                </p>
+              </div>
+
+              <p className="text-code text-[10px] text-[var(--text-muted)]">
+                You can now use managed keys — no API key needed.
+              </p>
+
+              <button
+                onClick={() => {
+                  setPaymentSuccess(false);
+                  setStep("setup");
+                }}
+                className="btn-cute-primary w-full py-3.5 text-heading text-[15px] tracking-tight"
+              >
+                <span className="relative z-10">Launch Agent →</span>
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
