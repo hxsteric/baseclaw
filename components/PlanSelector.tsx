@@ -136,6 +136,11 @@ function TopUpSlider({
   const [error, setError] = useState<string | null>(null);
 
   async function handleTopUp() {
+    if (!fid || fid === 0) {
+      setError("Please sign in first");
+      return;
+    }
+
     setPurchasing(true);
     setError(null);
 
@@ -235,6 +240,12 @@ export function PlanSelector() {
       return;
     }
 
+    // Check auth before accepting payment
+    if (!profile?.fid) {
+      setPaymentError("Please sign in first to subscribe");
+      return;
+    }
+
     setSubscribing(true);
     setPaymentError(null);
 
@@ -260,13 +271,16 @@ export function PlanSelector() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fid: profile?.fid,
+          fid: profile.fid,
           txHash: payment.id,
-          walletAddress: profile?.wallet_address,
+          walletAddress: profile.wallet_address,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to activate subscription");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to activate subscription");
+      }
 
       // Refresh profile so isPaid updates everywhere
       await refresh();

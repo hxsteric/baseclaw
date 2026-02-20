@@ -22,8 +22,11 @@ export async function POST(
     const body = await request.json();
     const { fid, txHash, walletAddress } = body;
 
-    if (!fid || !txHash) {
-      return NextResponse.json({ error: "Missing fid or txHash" }, { status: 400 });
+    if (!fid || fid === 0) {
+      return NextResponse.json({ error: "Please sign in to subscribe" }, { status: 401 });
+    }
+    if (!txHash) {
+      return NextResponse.json({ error: "Transaction hash is required" }, { status: 400 });
     }
 
     // Ensure user exists
@@ -49,7 +52,8 @@ export async function POST(
     });
   } catch (error) {
     console.error("Subscribe error:", error);
-    return NextResponse.json({ error: "Subscription failed" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: `Subscription failed: ${msg}` }, { status: 500 });
   }
 }
 

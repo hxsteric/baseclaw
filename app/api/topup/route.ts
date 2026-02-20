@@ -7,8 +7,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { fid, amount, txHash } = body;
 
-    if (!fid || !amount || !txHash) {
-      return NextResponse.json({ error: "Missing fid, amount, or txHash" }, { status: 400 });
+    if (!fid || fid === 0) {
+      return NextResponse.json({ error: "Please sign in to top up" }, { status: 401 });
+    }
+    if (!amount) {
+      return NextResponse.json({ error: "Amount is required" }, { status: 400 });
+    }
+    if (!txHash) {
+      return NextResponse.json({ error: "Transaction hash is required" }, { status: 400 });
     }
 
     const amountNum = Number(amount);
@@ -37,6 +43,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Top-up error:", error);
-    return NextResponse.json({ error: "Top-up failed" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: `Top-up failed: ${msg}` }, { status: 500 });
   }
 }
