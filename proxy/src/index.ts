@@ -270,8 +270,12 @@ wss.on("connection", (ws, req) => {
 });
 
 function send(ws: WebSocket, data: Record<string, unknown>) {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(data));
+  try {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(data));
+    }
+  } catch (err) {
+    console.error("WebSocket send error:", err);
   }
 }
 

@@ -7,14 +7,39 @@ interface StreamCallbacks {
   onError: (error: string) => void;
 }
 
+// Dynamic tool description with today's date so the model searches with current context
+function getSearchDescription(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return `Search the web for real-time information. Today is ${today}. Use this when you need current data, news, prices, events, or any information that may have changed recently. Always include the current year in time-sensitive queries.`;
+}
+
 // Tool definition for web search (OpenAI-compatible format used by OpenRouter/OpenAI)
-const WEB_SEARCH_TOOL = {
-  type: "function" as const,
-  function: {
+function getWebSearchTool() {
+  return {
+    type: "function" as const,
+    function: {
+      name: "web_search",
+      description: getSearchDescription(),
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The search query to look up on the web",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  };
+}
+
+// Anthropic tool format
+function getWebSearchToolAnthropic() {
+  return {
     name: "web_search",
-    description:
-      "Search the web for real-time information. Use this when you need current data, news, prices, events, or any information that may have changed after your training cutoff.",
-    parameters: {
+    description: getSearchDescription(),
+    input_schema: {
       type: "object",
       properties: {
         query: {
@@ -24,25 +49,8 @@ const WEB_SEARCH_TOOL = {
       },
       required: ["query"],
     },
-  },
-};
-
-// Anthropic tool format
-const WEB_SEARCH_TOOL_ANTHROPIC = {
-  name: "web_search",
-  description:
-    "Search the web for real-time information. Use this when you need current data, news, prices, events, or any information that may have changed after your training cutoff.",
-  input_schema: {
-    type: "object",
-    properties: {
-      query: {
-        type: "string",
-        description: "The search query to look up on the web",
-      },
-    },
-    required: ["query"],
-  },
-};
+  };
+}
 
 export async function streamCompletion(
   provider: string,
@@ -92,8 +100,11 @@ async function streamAnthropic(
   };
 
   if (braveApiKey) {
-    body.tools = [WEB_SEARCH_TOOL_ANTHROPIC];
+    body.tools = [getWebSearchToolAnthropic()];
   }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -103,7 +114,8 @@ async function streamAnthropic(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(body),
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (!res.ok) {
     const err = await res.text();
@@ -207,6 +219,9 @@ async function streamAnthropic(
         stream: true,
       };
 
+      const controller2 = new AbortController();
+      const timeout2 = setTimeout(() => controller2.abort(), 60_000);
+
       const res2 = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -215,7 +230,8 @@ async function streamAnthropic(
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify(body2),
-      });
+        signal: controller2.signal,
+      }).finally(() => clearTimeout(timeout2));
 
       if (!res2.ok) {
         const err = await res2.text();
@@ -465,15 +481,19 @@ async function streamOpenAICompatible(
   };
 
   if (braveApiKey) {
-    body.tools = [WEB_SEARCH_TOOL];
+    body.tools = [getWebSearchTool()];
     body.tool_choice = "auto";
   }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
 
   const res = await fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (!res.ok) {
     const err = await res.text();
@@ -586,11 +606,15 @@ async function streamOpenAICompatible(
         stream: true,
       };
 
+      const controller2 = new AbortController();
+      const timeout2 = setTimeout(() => controller2.abort(), 60_000);
+
       const res2 = await fetch(continuationUrl || url, {
         method: "POST",
         headers,
         body: JSON.stringify(body2),
-      });
+        signal: controller2.signal,
+      }).finally(() => clearTimeout(timeout2));
 
       if (!res2.ok) {
         const err = await res2.text();

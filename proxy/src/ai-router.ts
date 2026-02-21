@@ -16,7 +16,7 @@
  *   simple:     google/gemini-2.5-flash-lite           (via OpenRouter, free)
  *   heartbeat:  google/gemini-2.5-flash-lite           (via OpenRouter, free, every 30m)
  *   subagents:  deepseek/deepseek-r1                   (via OpenRouter, free)
- *   imageModel: google/gemini-3-flash-preview-preview          (via OpenRouter, free)
+ *   imageModel: google/gemini-3-flash-preview                  (via OpenRouter, free)
  *
  * Cost limits (only Opus/Sonnet counts):
  *   Starter:  $5/month  + top-ups

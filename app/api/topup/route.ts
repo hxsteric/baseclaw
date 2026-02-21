@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUser, recordPayment } from "@/lib/supabase";
-import { addExtraBudget } from "@/lib/supabase";
+import { getUser, recordPayment, getPaymentByTxHash, addExtraBudget } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +19,12 @@ export async function POST(request: NextRequest) {
     const amountNum = Number(amount);
     if (amountNum < 5 || amountNum > 20) {
       return NextResponse.json({ error: "Top-up must be between $5 and $20" }, { status: 400 });
+    }
+
+    // Duplicate payment protection
+    const existingPayment = await getPaymentByTxHash(txHash);
+    if (existingPayment) {
+      return NextResponse.json({ error: "This transaction has already been processed" }, { status: 409 });
     }
 
     // Verify user exists and has a paid plan

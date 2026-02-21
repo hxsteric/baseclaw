@@ -23,13 +23,28 @@ export function useApp() {
   return ctx;
 }
 
+const AUTH_KEY = "baseclaw_auth";
+
 export function Providers({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
-  const [auth, setAuth] = useState<AuthState>({
-    fid: null,
-    token: null,
-    authenticated: false,
+  const [auth, setAuthRaw] = useState<AuthState>(() => {
+    try {
+      const saved = typeof window !== "undefined" && localStorage.getItem(AUTH_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { fid: null, token: null, authenticated: false };
   });
+
+  // Persist auth to localStorage whenever it changes
+  useEffect(() => {
+    if (auth.fid && auth.fid !== 0) {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+    }
+  }, [auth]);
+
+  function setAuth(next: AuthState) {
+    setAuthRaw(next);
+  }
   const [config, setConfig] = useState<UserConfig | null>(null);
   const [step, setStepRaw] = useState<AppStep>("loading");
   const [prevStep, setPrevStep] = useState<AppStep | null>(null);

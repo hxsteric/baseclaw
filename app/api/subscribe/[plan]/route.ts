@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUser, upsertUser, updateUserPlan, recordPayment } from "@/lib/supabase";
+import { getUser, upsertUser, updateUserPlan, recordPayment, getPaymentByTxHash } from "@/lib/supabase";
 import { PLANS } from "@/lib/subscription";
 import type { Plan } from "@/lib/types";
 
@@ -27,6 +27,12 @@ export async function POST(
     }
     if (!txHash) {
       return NextResponse.json({ error: "Transaction hash is required" }, { status: 400 });
+    }
+
+    // Duplicate payment protection
+    const existingPayment = await getPaymentByTxHash(txHash);
+    if (existingPayment) {
+      return NextResponse.json({ error: "This transaction has already been processed" }, { status: 409 });
     }
 
     // Ensure user exists

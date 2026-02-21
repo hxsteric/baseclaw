@@ -130,7 +130,7 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
       ws.close();
       wsRef.current = null;
     };
-  }, [config]);
+  }, [config, fid]);
 
   // Debounced persistence of messages
   useEffect(() => {

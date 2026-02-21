@@ -12,6 +12,7 @@ export async function braveWebSearch(
   const params = new URLSearchParams({
     q: query,
     count: String(count),
+    freshness: "pw",  // past week — ensures recent results
   });
 
   const res = await fetch(

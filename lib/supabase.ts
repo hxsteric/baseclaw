@@ -185,6 +185,17 @@ export async function addToWaitlist(email: string) {
 
 // ---------- Payments ----------
 
+export async function getPaymentByTxHash(txHash: string) {
+  const { data, error } = await getSupabase()
+    .from("payments")
+    .select("id, tx_hash")
+    .eq("tx_hash", txHash)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function recordPayment(
   fid: number,
   amountUsd: number,
