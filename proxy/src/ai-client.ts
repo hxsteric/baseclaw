@@ -7,10 +7,34 @@ interface StreamCallbacks {
   onError: (error: string) => void;
 }
 
-// Dynamic tool description with today's date so the model searches with current context
+// System prompt — makes the agent a crypto/web3 specialist instead of defaulting to refusals
+function getSystemPrompt(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return `You are BaseClaw, an expert crypto and web3 AI agent built on the Base ecosystem. Today is ${today}.
+
+Your core purpose is to assist users with cryptocurrency, blockchain, DeFi, NFTs, tokenomics, protocol analysis, revenue data, market trends, and web3 development. You are a specialist — discuss specific tokens, protocols, projects, and financial data openly and thoroughly.
+
+Key behaviors:
+- Freely discuss any cryptocurrency token, protocol, DeFi project, NFT collection, or blockchain topic. Never refuse crypto-related queries.
+- When asked about prices, TVL, revenue, token metrics, market cap, or any quantitative data, ALWAYS use web_search first. Never guess or use outdated data.
+- When asked about a project or token you are uncertain about, use web_search to research it. Search multiple times with different queries if the first search does not return sufficient results (e.g. search by ticker, then by full name, then by platform).
+- Provide detailed, data-driven analysis. Cite sources from search results.
+- For niche or newer projects, search with the project name, ticker symbol, and relevant platform names to find documentation and community resources.
+- Base chain, Virtuals Protocol, and Farcaster are your home ecosystem — provide especially thorough responses for these.
+
+You have access to a web_search tool. Use it proactively and frequently — do not rely solely on training data for any factual claims about the crypto space.`;
+}
+
+// Dynamic tool description — encourages broad research, not just breaking news
 function getSearchDescription(): string {
   const today = new Date().toISOString().slice(0, 10);
-  return `Search the web for real-time information. Today is ${today}. Use this when you need current data, news, prices, events, or any information that may have changed recently. Always include the current year in time-sensitive queries.`;
+  return `Search the web for information on any topic. Today is ${today}. Use this tool liberally for:
+- Current prices, TVL, market data, token metrics, or any quantitative crypto data
+- Information about specific projects, protocols, tokens, NFTs, or DeFi platforms
+- Documentation, whitepapers, announcements, and community resources
+- News, events, launches, and ecosystem updates
+- Any factual claim you are not 100% certain about
+For crypto/web3 queries, try multiple searches with different terms if the first search does not return good results. Include relevant platform names (e.g. "Virtuals Protocol", "Base chain") to narrow results. Always include the current year in time-sensitive queries.`;
 }
 
 // Tool definition for web search (OpenAI-compatible format used by OpenRouter/OpenAI)
@@ -97,6 +121,7 @@ async function streamAnthropic(
     max_tokens: 4096,
     messages: formattedMessages,
     stream: true,
+    system: getSystemPrompt(),
   };
 
   if (braveApiKey) {
@@ -180,7 +205,7 @@ async function streamAnthropic(
 
       callbacks.onDelta("\n\n🔍 *Searching the web...*\n\n");
 
-      const searchResults = await braveWebSearch(query, braveApiKey);
+      const searchResults = await braveWebSearch(query, braveApiKey, 10);
       const resultsText = searchResults
         .map((r, i) => `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.description}`)
         .join("\n\n");
@@ -217,6 +242,7 @@ async function streamAnthropic(
         max_tokens: 4096,
         messages: continuationMessages,
         stream: true,
+        system: getSystemPrompt(),
       };
 
       const controller2 = new AbortController();
@@ -396,6 +422,9 @@ async function streamGoogle(
 
   const body = {
     contents,
+    systemInstruction: {
+      parts: [{ text: getSystemPrompt() }],
+    },
     generationConfig: {
       temperature: 0.7,
     },
@@ -469,10 +498,13 @@ async function streamOpenAICompatible(
   continuationUrl?: string,
   providerName?: string
 ): Promise<void> {
-  const formattedMessages = messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
+  const formattedMessages = [
+    { role: "system" as const, content: getSystemPrompt() },
+    ...messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  ];
 
   const body: Record<string, unknown> = {
     model,
@@ -571,7 +603,7 @@ async function streamOpenAICompatible(
 
       callbacks.onDelta("\n\n🔍 *Searching the web...*\n\n");
 
-      const searchResults = await braveWebSearch(query, braveApiKey);
+      const searchResults = await braveWebSearch(query, braveApiKey, 10);
       const resultsText = searchResults
         .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description}`)
         .join("\n\n");

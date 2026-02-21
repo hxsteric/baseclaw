@@ -7,13 +7,18 @@ export interface BraveSearchResult {
 export async function braveWebSearch(
   query: string,
   apiKey: string,
-  count: number = 5
+  count: number = 10,
+  freshness?: string  // "pd" | "pw" | "pm" | "py" | undefined (all time)
 ): Promise<BraveSearchResult[]> {
   const params = new URLSearchParams({
     q: query,
     count: String(count),
-    freshness: "pw",  // past week — ensures recent results
   });
+
+  // Only restrict freshness if explicitly requested — default is all-time for broader results
+  if (freshness) {
+    params.set("freshness", freshness);
+  }
 
   const res = await fetch(
     `https://api.search.brave.com/res/v1/web/search?${params}`,
