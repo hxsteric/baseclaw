@@ -73,7 +73,7 @@ wss.on("connection", (ws, req) => {
 
             // Store session — model/provider get resolved per-message by the router
             const sessionConfig = {
-              model: "claude-opus-4-5-20250514",
+              model: "claude-opus-4-20250514",
               provider: "anthropic",
               apiKey: anthropicKey,
               keyMode: "managed" as const,

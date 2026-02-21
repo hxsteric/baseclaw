@@ -12,11 +12,11 @@
  *
  * Agent model config:
  *   complex:    anthropic/claude-opus-4-20250514       (direct Anthropic, metered)
- *   daily:      deepseek/deepseek-reasoner             (via OpenRouter, free)
+ *   daily:      deepseek/deepseek-r1                   (via OpenRouter, free)
  *   simple:     google/gemini-2.5-flash-lite           (via OpenRouter, free)
  *   heartbeat:  google/gemini-2.5-flash-lite           (via OpenRouter, free, every 30m)
- *   subagents:  deepseek/deepseek-reasoner             (via OpenRouter, free)
- *   imageModel: google/gemini-3-flash                  (via OpenRouter, free)
+ *   subagents:  deepseek/deepseek-r1                   (via OpenRouter, free)
+ *   imageModel: google/gemini-3-flash-preview-preview          (via OpenRouter, free)
  *
  * Cost limits (only Opus/Sonnet counts):
  *   Starter:  $5/month  + top-ups
@@ -47,7 +47,7 @@ export const AGENT_MODELS = {
   // Daily work: DeepSeek R1 via OpenRouter (free)
   // Code generation, research, content creation — 90% cheaper than Opus
   daily: {
-    model: "deepseek/deepseek-reasoner",
+    model: "deepseek/deepseek-r1",
     provider: "openrouter",
   } as ModelConfig,
 
@@ -68,7 +68,7 @@ export const AGENT_MODELS = {
 
   // Subagents: DeepSeek R1 via OpenRouter (free)
   subagents: {
-    model: "deepseek/deepseek-reasoner",
+    model: "deepseek/deepseek-r1",
     provider: "openrouter",
     maxConcurrent: 1,
     archiveAfterMinutes: 60,
@@ -76,7 +76,7 @@ export const AGENT_MODELS = {
 
   // Image/Vision: Gemini 3 Flash via OpenRouter (free)
   imageModel: {
-    primary: { model: "google/gemini-3-flash", provider: "openrouter" } as ModelConfig,
+    primary: { model: "google/gemini-3-flash-preview", provider: "openrouter" } as ModelConfig,
     fallbacks: [{ model: "openai/gpt-5.2", provider: "openrouter" }] as ModelConfig[],
   },
 };
@@ -139,9 +139,9 @@ export const MODEL_COSTS: Record<string, { input: number; output: number; metere
   "claude-opus-4-20250514": { input: 15.0, output: 75.0, metered: true },
   "claude-sonnet-4-5-20250929": { input: 3.0, output: 15.0, metered: true },
   // UNMETERED — via OpenRouter, free for all tiers
-  "deepseek/deepseek-reasoner": { input: 0.0, output: 0.0, metered: false },
+  "deepseek/deepseek-r1": { input: 0.0, output: 0.0, metered: false },
   "google/gemini-2.5-flash-lite": { input: 0.0, output: 0.0, metered: false },
-  "google/gemini-3-flash": { input: 0.0, output: 0.0, metered: false },
+  "google/gemini-3-flash-preview": { input: 0.0, output: 0.0, metered: false },
   "openai/gpt-5.2": { input: 0.0, output: 0.0, metered: false },
 };
 

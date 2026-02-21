@@ -230,7 +230,7 @@ const PILL_CONTENT: Record<string, React.ReactNode> = {
    MAIN COMPONENT
    ============================================ */
 export function OnboardingFlow() {
-  const { skip } = useAuth();
+  const { skip, authenticate } = useAuth();
   const { setStep } = useApp();
   const [expandedPill, setExpandedPill] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -329,7 +329,10 @@ export function OnboardingFlow() {
             transition={{ duration: 0.5, delay: 0.6, ease }}
             className="w-full max-w-xs space-y-3"
           >
-            <SwipeToStart onSwipeComplete={skip} />
+            <SwipeToStart onSwipeComplete={async () => {
+              await authenticate({ skipNavigation: true });
+              setStep("setup");
+            }} />
 
             {/* Secondary glass buttons */}
             <button
