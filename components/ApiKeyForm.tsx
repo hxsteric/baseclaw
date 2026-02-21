@@ -125,46 +125,50 @@ export function ApiKeyForm() {
             </div>
           )}
 
-          {/* Provider */}
-          <div className="animate-fade-up">
-            <label className="text-label block mb-3">Provider</label>
-            <div className="grid grid-cols-2 gap-2">
-              {providers.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handleProviderChange(p.id)}
-                  className={`py-3 px-3 text-code text-xs ${
-                    provider === p.id ? "btn-cute-active" : "btn-cute"
-                  }`}
-                >
-                  <span className="relative z-10">{p.label}</span>
-                </button>
-              ))}
+          {/* Provider — only show for BYOK mode */}
+          {keyMode === "byok" && (
+            <div className="animate-fade-up">
+              <label className="text-label block mb-3">Provider</label>
+              <div className="grid grid-cols-2 gap-2">
+                {providers.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleProviderChange(p.id)}
+                    className={`py-3 px-3 text-code text-xs ${
+                      provider === p.id ? "btn-cute-active" : "btn-cute"
+                    }`}
+                  >
+                    <span className="relative z-10">{p.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Model */}
-          <div className="animate-fade-up-delay-1">
-            <label className="text-label block mb-3">Model</label>
-            <div className="space-y-2">
-              {models.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setModel(m.id)}
-                  className={`w-full py-3 px-4 text-left ${
-                    model === m.id ? "btn-cute-active" : "btn-cute"
-                  }`}
-                >
-                  <span className="relative z-10 flex items-center justify-between">
-                    <span className="text-heading text-[13px] sm:text-sm">{m.label}</span>
-                    <span className="text-code text-[10px] text-[var(--text-muted)]">{m.id}</span>
-                  </span>
-                </button>
-              ))}
+          {/* Model — only show for BYOK mode */}
+          {keyMode === "byok" && (
+            <div className="animate-fade-up-delay-1">
+              <label className="text-label block mb-3">Model</label>
+              <div className="space-y-2">
+                {models.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setModel(m.id)}
+                    className={`w-full py-3 px-4 text-left ${
+                      model === m.id ? "btn-cute-active" : "btn-cute"
+                    }`}
+                  >
+                    <span className="relative z-10 flex items-center justify-between">
+                      <span className="text-heading text-[13px] sm:text-sm">{m.label}</span>
+                      <span className="text-code text-[10px] text-[var(--text-muted)]">{m.id}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* API Key — only show for BYOK mode */}
           {keyMode === "byok" && (
@@ -206,17 +210,37 @@ export function ApiKeyForm() {
             </div>
           )}
 
-          {/* Managed mode info */}
+          {/* Managed mode — smart routing info */}
           {keyMode === "managed" && (
-            <div className="animate-fade-up-delay-2">
-              <div className="glass rounded-xl p-4 space-y-2">
+            <div className="animate-fade-up-delay-1 space-y-4">
+              <div className="glass rounded-xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-[var(--success)]" />
-                  <span className="text-heading text-xs">Managed Key Active</span>
+                  <span className="text-heading text-xs">Smart Routing Active</span>
                 </div>
-                <p className="text-code text-[10px] text-[var(--text-muted)]">
-                  No API key needed. Base Claw will use its own keys for your requests.
-                  Usage is tracked against your {profile?.plan} plan limits.
+                <p className="text-code text-[10px] text-[var(--text-muted)] leading-relaxed">
+                  Your agent automatically picks the best model for each task.
+                  No API key needed — Base Claw handles everything.
+                </p>
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-code text-[10px] text-[var(--rose)]">Complex</span>
+                    <span className="flex-1 border-t border-dashed border-[var(--border)]" />
+                    <span className="text-code text-[10px] text-[var(--text-muted)]">Claude Opus</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-code text-[10px] text-[var(--rose)]">Daily</span>
+                    <span className="flex-1 border-t border-dashed border-[var(--border)]" />
+                    <span className="text-code text-[10px] text-[var(--text-muted)]">DeepSeek R1</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-code text-[10px] text-[var(--rose)]">Quick</span>
+                    <span className="flex-1 border-t border-dashed border-[var(--border)]" />
+                    <span className="text-code text-[10px] text-[var(--text-muted)]">Gemini Flash</span>
+                  </div>
+                </div>
+                <p className="text-code text-[9px] text-[var(--text-ghost)] pt-1">
+                  Usage tracked against your {profile?.plan} plan budget.
                 </p>
               </div>
             </div>

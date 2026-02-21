@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "./Providers";
+import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { PLANS, getBudgetPercent, getRemainingBudget, getTotalBudget, type PlanConfig } from "@/lib/subscription";
 import type { Plan } from "@/lib/types";
@@ -227,12 +228,20 @@ function TopUpSlider({
 }
 
 export function PlanSelector() {
-  const { setStep } = useApp();
+  const { auth, setStep } = useApp();
+  const { authenticate } = useAuth();
   const { profile, usage, loading, refresh } = useSubscription();
   const [subscribing, setSubscribing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [activatedPlan, setActivatedPlan] = useState<string | null>(null);
+
+  // Auto-authenticate on mount if not already authenticated
+  useEffect(() => {
+    if (!auth.fid || auth.fid === 0) {
+      authenticate({ skipNavigation: true });
+    }
+  }, []);
 
   async function handleSelect(plan: Plan) {
     if (plan === "free") {

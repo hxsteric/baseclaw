@@ -6,7 +6,7 @@ import { useApp } from "@/components/Providers";
 export function useAuth() {
   const { auth, setAuth, setStep } = useApp();
 
-  const authenticate = useCallback(async () => {
+  const authenticate = useCallback(async (opts?: { skipNavigation?: boolean }) => {
     try {
       const { sdk } = await import("@farcaster/miniapp-sdk");
       const result = await sdk.quickAuth.getToken();
@@ -19,7 +19,7 @@ export function useAuth() {
 
         if (data.fid) {
           setAuth({ fid: data.fid, token: result.token, authenticated: true });
-          setStep("setup");
+          if (!opts?.skipNavigation) setStep("setup");
           return data;
         }
       }
@@ -27,7 +27,7 @@ export function useAuth() {
       // Not in Farcaster client — use dev mode
       const devFid = 99999;
       setAuth({ fid: devFid, token: "dev-token", authenticated: true });
-      setStep("setup");
+      if (!opts?.skipNavigation) setStep("setup");
       return { fid: devFid };
     }
     return null;

@@ -581,15 +581,16 @@ function WaitlistModal({ onClose }: { onClose: () => void }) {
 /* ── main pricing section ── */
 export function PricingSection() {
   const { setStep } = useApp();
-  const { skip } = useAuth();
-  function handleTierAction(tierId: string) {
+  const { skip, authenticate } = useAuth();
+  async function handleTierAction(tierId: string) {
     switch (tierId) {
       case "free":
         // Go to BYOK model launcher (setup step)
         skip();
         break;
       case "hybrid":
-        // Navigate to plans view
+        // Authenticate first (gets Farcaster fid or dev fid), then navigate to plans
+        await authenticate({ skipNavigation: true });
         setStep("plans");
         break;
       case "pro":
