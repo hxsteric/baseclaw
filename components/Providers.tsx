@@ -60,6 +60,23 @@ export function Providers({ children }: { children: ReactNode }) {
       try {
         const { sdk } = await import("@farcaster/miniapp-sdk");
         sdk.actions.ready();
+
+        // Re-authenticate from Farcaster SDK to get fresh fid
+        // This ensures mobile Base app always has the correct fid
+        try {
+          const result = await sdk.quickAuth.getToken();
+          if (result?.token) {
+            const res = await fetch("/api/auth/verify", {
+              headers: { Authorization: `Bearer ${result.token}` },
+            });
+            const data = await res.json();
+            if (data.fid) {
+              setAuthRaw({ fid: data.fid, token: result.token, authenticated: true });
+            }
+          }
+        } catch {
+          // quickAuth failed — keep cached auth
+        }
       } catch {
         // Not in a Farcaster client — continue for dev/testing
       }

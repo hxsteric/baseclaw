@@ -229,7 +229,7 @@ function TopUpSlider({
 
 export function PlanSelector() {
   const { auth, setStep } = useApp();
-  const { authenticate } = useAuth();
+  const { authenticate, isAuthenticating } = useAuth();
   const { profile, usage, loading, refresh } = useSubscription();
   const [subscribing, setSubscribing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -241,7 +241,7 @@ export function PlanSelector() {
     if (!auth.fid || auth.fid === 0) {
       authenticate({ skipNavigation: true });
     }
-  }, []);
+  }, [auth.fid]);
 
   async function handleSelect(plan: Plan) {
     if (plan === "free") {
@@ -249,16 +249,24 @@ export function PlanSelector() {
       return;
     }
 
-    // Check auth before accepting payment
-    if (!profile?.fid) {
-      setPaymentError("Please sign in first to subscribe");
-      return;
-    }
-
     setSubscribing(true);
     setPaymentError(null);
 
     try {
+      // If profile not ready, try authenticating first and wait for profile
+      let activeFid = profile?.fid || auth.fid;
+      if (!activeFid || activeFid === 0) {
+        const authResult = await authenticate({ skipNavigation: true });
+        if (!authResult?.fid) {
+          setPaymentError("Unable to sign in. Please try again.");
+          setSubscribing(false);
+          return;
+        }
+        activeFid = authResult.fid;
+        // Give useSubscription time to fetch profile with new fid
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+
       const { pay } = await import("@base-org/account");
 
       const planConfig = PLANS[plan];
@@ -280,9 +288,9 @@ export function PlanSelector() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fid: profile.fid,
+          fid: activeFid,
           txHash: payment.id,
-          walletAddress: profile.wallet_address,
+          walletAddress: profile?.wallet_address,
         }),
       });
 
@@ -334,7 +342,7 @@ export function PlanSelector() {
               plan={plan}
               currentPlan={profile?.plan}
               onSelect={handleSelect}
-              loading={subscribing || loading}
+              loading={subscribing || loading || isAuthenticating}
             />
           ))}
         </div>

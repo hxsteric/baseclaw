@@ -105,17 +105,38 @@ const SIMPLE_PATTERNS = [
   /^(show|list|get|what is)\b/i,
 ];
 
+// Research/lookup patterns → Gemini Flash-Lite (fast, web-search-augmented)
+// These queries don't need deep reasoning — a fast model + search results is sufficient
+const RESEARCH_PATTERNS = [
+  /\b(price|prices|pricing)\b.*\b(of|for)\b/i,
+  /\b(how much|current|latest|today)\b.{0,30}\b(price|worth|value|trading)\b/i,
+  /\b(tell me|what do you know|info|information|explain|describe)\b.{0,10}\b(about)\b/i,
+  /\b(look up|search for|find|research)\b/i,
+  /\bmarket ?cap\b/i,
+  /\btvl\b/i,
+  /\b(airdrop|tokenomics|supply|volume|liquidity|staking|yield)\b/i,
+  /\b(bitcoin|btc|ethereum|eth|solana|sol|base|degen|brett|toshi|higher|virtual|virtuals|nox)\b/i,
+  /\b(token|coin|nft|protocol|defi|dao)\b.{0,30}\b(revenue|data|stats|metrics|performance)\b/i,
+  /\b(who|which|what)\b.{0,30}\b(most|best|top|highest|biggest)\b/i,
+];
+
 /**
  * Classify a user prompt into a task tier.
  *   complex → Claude Opus (metered, expensive)
- *   daily   → DeepSeek R1 via OpenRouter (free, great for code/research)
- *   simple  → Gemini Flash-Lite via OpenRouter (free, cheapest)
+ *   daily   → DeepSeek R1 via OpenRouter (free, great for code/reasoning)
+ *   simple  → Gemini Flash-Lite via OpenRouter (free, fast, for lookups + search)
  */
 export function classifyTask(prompt: string): TaskTier {
   const trimmed = prompt.trim();
 
   // Simple: greetings, short msgs, status checks
   for (const pattern of SIMPLE_PATTERNS) {
+    if (pattern.test(trimmed)) return "simple";
+  }
+
+  // Research: crypto lookups, price queries, data questions
+  // Route to fast model — web search provides the actual data
+  for (const pattern of RESEARCH_PATTERNS) {
     if (pattern.test(trimmed)) return "simple";
   }
 

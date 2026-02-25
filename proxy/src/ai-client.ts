@@ -7,6 +7,25 @@ interface StreamCallbacks {
   onError: (error: string) => void;
 }
 
+// Safe JSON parser — handles trailing data, whitespace issues, and partial corruption
+function safeJsonParse<T = unknown>(raw: string): { ok: true; value: T } | { ok: false; error: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { ok: false, error: "Empty JSON string" };
+  try {
+    return { ok: true, value: JSON.parse(trimmed) as T };
+  } catch {
+    // Attempt to salvage: extract first complete {...} object
+    const first = trimmed.indexOf("{");
+    const last = trimmed.lastIndexOf("}");
+    if (first !== -1 && last > first) {
+      try {
+        return { ok: true, value: JSON.parse(trimmed.slice(first, last + 1)) as T };
+      } catch { /* genuinely broken */ }
+    }
+    return { ok: false, error: "Invalid JSON in tool arguments" };
+  }
+}
+
 // System prompt — makes the agent a crypto/web3 specialist instead of defaulting to refusals
 function getSystemPrompt(): string {
   const today = new Date().toISOString().slice(0, 10);
@@ -17,7 +36,7 @@ Your core purpose is to assist users with cryptocurrency, blockchain, DeFi, NFTs
 Key behaviors:
 - Freely discuss any cryptocurrency token, protocol, DeFi project, NFT collection, or blockchain topic. Never refuse crypto-related queries.
 - When asked about prices, TVL, revenue, token metrics, market cap, or any quantitative data, ALWAYS use web_search first. Never guess or use outdated data.
-- When asked about a project or token you are uncertain about, use web_search to research it. Search multiple times with different queries if the first search does not return sufficient results (e.g. search by ticker, then by full name, then by platform).
+- When asked about a project or token you are uncertain about, use web_search to research it. Use a single well-crafted search query that includes the token name, ticker, and relevant context.
 - Provide detailed, data-driven analysis. Cite sources from search results.
 - For niche or newer projects, search with the project name, ticker symbol, and relevant platform names to find documentation and community resources.
 - Base chain, Virtuals Protocol, and Farcaster are your home ecosystem — provide especially thorough responses for these.
@@ -34,7 +53,7 @@ function getSearchDescription(): string {
 - Documentation, whitepapers, announcements, and community resources
 - News, events, launches, and ecosystem updates
 - Any factual claim you are not 100% certain about
-For crypto/web3 queries, try multiple searches with different terms if the first search does not return good results. Include relevant platform names (e.g. "Virtuals Protocol", "Base chain") to narrow results. Always include the current year in time-sensitive queries.`;
+For crypto/web3 queries, craft a comprehensive search query that includes key identifiers (name, ticker, platform). Always include the current year in time-sensitive queries.`;
 }
 
 // Tool definition for web search (OpenAI-compatible format used by OpenRouter/OpenAI)
@@ -200,8 +219,21 @@ async function streamAnthropic(
   // Handle tool call if the model requested one
   if (hasToolUse && toolName === "web_search" && braveApiKey) {
     try {
-      const toolInput = JSON.parse(toolInputJson);
-      const query = toolInput.query;
+      const parsed = safeJsonParse<{ query?: string }>(toolInputJson);
+      if (!parsed.ok) {
+        console.error("[Search] Anthropic tool args parse failed:", parsed.error);
+        callbacks.onDelta("\n\nSearch temporarily unavailable. Please try again.\n\n");
+        callbacks.onFinal(fullText);
+        return;
+      }
+      const toolInput = parsed.value;
+      const query = toolInput.query || "";
+
+      if (!query) {
+        callbacks.onDelta("\n\nSearch skipped — no query provided.\n\n");
+        callbacks.onFinal(fullText);
+        return;
+      }
 
       callbacks.onDelta("\n\n🔍 *Searching the web...*\n\n");
 
@@ -297,7 +329,8 @@ async function streamAnthropic(
         }
       }
     } catch (err) {
-      callbacks.onDelta(`\n\n⚠️ Search failed: ${err}\n\n`);
+      console.error("[Search] Tool call failed:", err);
+      callbacks.onDelta("\n\nSearch temporarily unavailable. Please try again.\n\n");
     }
   }
 
@@ -510,6 +543,7 @@ async function streamOpenAICompatible(
     model,
     messages: formattedMessages,
     stream: true,
+    max_tokens: model.includes("deepseek-r1") ? 8192 : 4096,
   };
 
   if (braveApiKey) {
@@ -575,14 +609,16 @@ async function streamOpenAICompatible(
           callbacks.onDelta(textDelta);
         }
 
-        // Tool call delta
+        // Tool call delta — only accumulate first tool call (index 0)
         const toolCalls = choice.delta?.tool_calls;
         if (toolCalls && toolCalls.length > 0) {
           const tc = toolCalls[0];
-          if (tc.id) toolCallId = tc.id;
-          if (tc.function?.name) toolCallName = tc.function.name;
-          if (tc.function?.arguments) toolCallArgs += tc.function.arguments;
-          hasToolCall = true;
+          if (tc.index === undefined || tc.index === 0) {
+            if (tc.id) toolCallId = tc.id;
+            if (tc.function?.name) toolCallName = tc.function.name;
+            if (tc.function?.arguments) toolCallArgs += tc.function.arguments;
+            hasToolCall = true;
+          }
         }
 
         // Check finish reason
@@ -598,8 +634,21 @@ async function streamOpenAICompatible(
   // Handle tool call if the model requested a web search
   if (hasToolCall && toolCallName === "web_search" && braveApiKey) {
     try {
-      const args = JSON.parse(toolCallArgs);
-      const query = args.query;
+      const parsed = safeJsonParse<{ query?: string }>(toolCallArgs);
+      if (!parsed.ok) {
+        console.error("[Search] OpenAI tool args parse failed:", parsed.error);
+        callbacks.onDelta("\n\nSearch temporarily unavailable. Please try again.\n\n");
+        callbacks.onFinal(fullText);
+        return;
+      }
+      const args = parsed.value;
+      const query = args.query || "";
+
+      if (!query) {
+        callbacks.onDelta("\n\nSearch skipped — no query provided.\n\n");
+        callbacks.onFinal(fullText);
+        return;
+      }
 
       callbacks.onDelta("\n\n🔍 *Searching the web...*\n\n");
 
@@ -687,7 +736,8 @@ async function streamOpenAICompatible(
         }
       }
     } catch (err) {
-      callbacks.onDelta(`\n\n⚠️ Search failed: ${err}\n\n`);
+      console.error("[Search] Tool call failed:", err);
+      callbacks.onDelta("\n\nSearch temporarily unavailable. Please try again.\n\n");
     }
   }
 

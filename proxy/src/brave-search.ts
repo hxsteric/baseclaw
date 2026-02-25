@@ -36,7 +36,12 @@ export async function braveWebSearch(
     throw new Error(`Brave Search API error (${res.status}): ${err}`);
   }
 
-  const data = await res.json();
+  let data: any;
+  try {
+    data = await res.json();
+  } catch (parseErr) {
+    throw new Error(`Brave Search returned invalid JSON: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
+  }
 
   const results: BraveSearchResult[] = (data.web?.results || [])
     .slice(0, count)

@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useApp } from "@/components/Providers";
 
 export function useAuth() {
   const { auth, setAuth, setStep } = useApp();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const authenticate = useCallback(async (opts?: { skipNavigation?: boolean }) => {
+    setIsAuthenticating(true);
     try {
       const { sdk } = await import("@farcaster/miniapp-sdk");
       const result = await sdk.quickAuth.getToken();
@@ -29,6 +31,8 @@ export function useAuth() {
       setAuth({ fid: devFid, token: "dev-token", authenticated: true });
       if (!opts?.skipNavigation) setStep("setup");
       return { fid: devFid };
+    } finally {
+      setIsAuthenticating(false);
     }
     return null;
   }, [setAuth, setStep]);
@@ -38,5 +42,5 @@ export function useAuth() {
     setStep("setup");
   }, [setAuth, setStep]);
 
-  return { ...auth, authenticate, skip };
+  return { ...auth, authenticate, skip, isAuthenticating };
 }
