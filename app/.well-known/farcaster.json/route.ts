@@ -6,6 +6,8 @@ const VERIFIED_URL = "https://baseclaw.dev";
 
 export async function GET() {
   const manifest = {
+    // Tells Farcaster the app moved from baseclaw-v6kt.vercel.app → baseclaw.dev
+    canonicalDomain: "baseclaw.dev",
     accountAssociation: {
       header: "eyJmaWQiOjMzNjY0NywidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQzODQ3MzA3OTUwNTNCQzYxNmNiN0FBOTZGNWVBRURhODhjMTQ4N0QifQ",
       payload: "eyJkb21haW4iOiJiYXNlY2xhdy5kZXYifQ",
