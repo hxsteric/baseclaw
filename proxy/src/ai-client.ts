@@ -376,7 +376,7 @@ async function streamOpenRouter(
     {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://baseclaw-v6kt.vercel.app",
+      "HTTP-Referer": "https://baseclaw.dev",
       "X-Title": "Baseclaw",
     },
     model,
