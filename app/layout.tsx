@@ -36,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: APP_NAME,
     description: APP_DESCRIPTION,
     other: {
-      "virtual-protocol-site-verification": "f3a6d3ae03ab88449f1503ed03488d08",
+      "virtual-protocol-site-verification": "59db4ced1be95594178aa4ec7ae3dc37",
       "base:app_id": "698ccbcf0dbccf843e8642cc",
       "fc:miniapp": JSON.stringify({
         version: "next",
