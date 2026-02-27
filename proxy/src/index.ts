@@ -18,14 +18,20 @@ import {
   getProviderKey,
   type SubscriptionPlan,
 } from "./ai-router.js";
+import { startAcp, getAcpStatus } from "./acp-handler.js";
 
 const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
 const BRAVE_API_KEY = process.env.BRAVE_API_KEY || "";
 
-const server = http.createServer((_req, res) => {
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "ok", service: "clawdbot-proxy" }));
+const server = http.createServer((req, res) => {
+  if (req.url === "/acp/status" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok", service: "clawdbot-proxy", acp: getAcpStatus() }));
+  } else {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok", service: "clawdbot-proxy" }));
+  }
 });
 
 const wss = new WebSocketServer({ server });
@@ -281,4 +287,9 @@ function send(ws: WebSocket, data: Record<string, unknown>) {
 
 server.listen(PORT, () => {
   console.log(`Clawdbot proxy running on port ${PORT}`);
+
+  // Start ACP agent (non-blocking — runs in background)
+  startAcp().catch((err) => {
+    console.error("[ACP] Startup error (non-fatal):", err);
+  });
 });
