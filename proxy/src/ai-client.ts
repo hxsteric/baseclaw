@@ -442,53 +442,19 @@ async function streamDeepSeek(
 }
 
 // ---------- Venice AI ----------
-// Venice models do NOT support function calling (tools/tool_choice).
-// Instead we do a manual pre-search: if the query looks like it needs
-// real-time data, run Brave Search first and inject results into the prompt.
-
-const NEEDS_SEARCH_PATTERNS = [
-  /\b(price|prices|pricing|worth|value)\b.*\b(of|for|is|are)\b/i,
-  /\b(how much|current|latest|today|now)\b/i,
-  /\b(market ?cap|tvl|volume|liquidity|apy|apr)\b/i,
-  /\b(news|announcement|update|launch|release)\b/i,
-  /\b(what happened|who is|tell me about)\b/i,
-  /\b(search|look up|find|research)\b/i,
-  /\b(revenue|earnings|stats|metrics|data)\b/i,
-];
-
-function queryNeedsSearch(text: string): boolean {
-  return NEEDS_SEARCH_PATTERNS.some((p) => p.test(text));
-}
+// Uses Venice's native web search (enable_web_search: "auto") instead of Brave.
+// The model decides when to search. Venice also provides citations and can scrape URLs.
+// No tools/tool_choice needed — search is handled server-side by Venice.
 
 async function streamVenice(
   model: string,
   apiKey: string,
   messages: Message[],
   callbacks: StreamCallbacks,
-  braveApiKey?: string
+  _braveApiKey?: string  // Not used — Venice has its own search
 ): Promise<void> {
-  const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-
-  // Manual pre-search for queries that need real-time data
-  let searchContext = "";
-  if (braveApiKey && lastUserMsg && queryNeedsSearch(lastUserMsg)) {
-    try {
-      callbacks.onDelta("🔍 *Searching the web...*\n\n");
-      const searchResults = await braveWebSearch(lastUserMsg, braveApiKey, 8);
-      if (searchResults.length > 0) {
-        searchContext = "\n\n--- Web Search Results ---\n" +
-          searchResults.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description}`).join("\n\n") +
-          "\n--- End Search Results ---\n\nUse these search results to provide accurate, up-to-date information. Cite sources when relevant.";
-      }
-    } catch (err) {
-      console.error("[Venice] Pre-search failed:", err);
-    }
-  }
-
-  // Build messages with search context injected into system prompt
-  const systemPrompt = getSystemPrompt() + searchContext;
   const formattedMessages = [
-    { role: "system" as const, content: systemPrompt },
+    { role: "system" as const, content: getSystemPrompt() },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
@@ -499,11 +465,14 @@ async function streamVenice(
     max_tokens: model.includes("deepseek") ? 8192 : 4096,
     venice_parameters: {
       include_venice_system_prompt: false,
+      enable_web_search: "auto",       // Model decides when to search
+      enable_web_citations: true,       // Cite sources in responses
+      enable_web_scraping: true,        // Scrape URLs found in messages
     },
   };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60_000);
+  const timeout = setTimeout(() => controller.abort(), 90_000); // Longer timeout for search
 
   const res = await fetch("https://api.venice.ai/api/v1/chat/completions", {
     method: "POST",
