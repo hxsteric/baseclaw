@@ -47,7 +47,7 @@ export async function startAcp(): Promise<void> {
 
   try {
     // Dynamic import — the SDK may not be installed in all environments
-    const acpModule = await import("@virtuals-protocol/acp-node");
+    const acpModule: any = await import("@virtuals-protocol/acp-node");
     const AcpClient = acpModule.default || acpModule.AcpClient;
     const AcpContractClientV2 = acpModule.AcpContractClientV2;
 
