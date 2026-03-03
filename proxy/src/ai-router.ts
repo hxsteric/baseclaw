@@ -7,16 +7,16 @@
  *
  * Task classification:
  *   complex    → Claude Opus 4.6              (direct Anthropic, metered)
- *   daily      → DeepSeek R1 via Venice       (code gen, research, content — private)
+ *   daily      → DeepSeek V3.2 via Venice     (code gen, research, content — private)
  *   simple     → Llama 3.3 70B via Venice     (lookups, classification — fast, private)
  *   uncensored → Venice Uncensored            (no refusals, crypto-native)
  *
  * Agent model config:
  *   complex:     anthropic/claude-opus-4-20250514       (direct Anthropic, metered)
- *   daily:       deepseek-ai-DeepSeek-R1                (via Venice, private)
+ *   daily:       deepseek-v3.2                          (via Venice, private)
  *   simple:      llama-3.3-70b                          (via Venice, fast)
  *   heartbeat:   llama-3.3-70b                          (via Venice, every 30m)
- *   subagents:   deepseek-ai-DeepSeek-R1                (via Venice, private)
+ *   subagents:   deepseek-v3.2                          (via Venice, private)
  *   uncensored:  venice-uncensored                      (via Venice, 2.2% refusal)
  *   imageModel:  llama-3.3-70b                          (via Venice)
  *
@@ -46,10 +46,10 @@ export const AGENT_MODELS = {
     provider: "anthropic",
   } as ModelConfig,
 
-  // Daily work: DeepSeek R1 via Venice AI (private inference)
-  // Code generation, research, content creation — private, uncensored
+  // Daily work: DeepSeek V3.2 via Venice AI (private inference)
+  // Code generation, research, content creation — private
   daily: {
-    model: "deepseek-ai-DeepSeek-R1",
+    model: "deepseek-v3.2",
     provider: "venice",
   } as ModelConfig,
 
@@ -75,9 +75,9 @@ export const AGENT_MODELS = {
     target: "last" as const,
   },
 
-  // Subagents: DeepSeek R1 via Venice (private)
+  // Subagents: DeepSeek V3.2 via Venice (private)
   subagents: {
-    model: "deepseek-ai-DeepSeek-R1",
+    model: "deepseek-v3.2",
     provider: "venice",
     maxConcurrent: 1,
     archiveAfterMinutes: 60,
@@ -86,7 +86,7 @@ export const AGENT_MODELS = {
   // Image/Vision: Llama 3.3 70B via Venice
   imageModel: {
     primary: { model: "llama-3.3-70b", provider: "venice" } as ModelConfig,
-    fallbacks: [{ model: "deepseek-ai-DeepSeek-R1", provider: "venice" }] as ModelConfig[],
+    fallbacks: [{ model: "deepseek-v3.2", provider: "venice" }] as ModelConfig[],
   },
 };
 
@@ -169,7 +169,7 @@ export const MODEL_COSTS: Record<string, { input: number; output: number; metere
   "claude-opus-4-20250514": { input: 15.0, output: 75.0, metered: true },
   "claude-sonnet-4-5-20250929": { input: 3.0, output: 15.0, metered: true },
   // UNMETERED — via Venice AI, private inference for all tiers
-  "deepseek-ai-DeepSeek-R1": { input: 0.0, output: 0.0, metered: false },
+  "deepseek-v3.2": { input: 0.0, output: 0.0, metered: false },
   "llama-3.3-70b": { input: 0.0, output: 0.0, metered: false },
   "venice-uncensored": { input: 0.0, output: 0.0, metered: false },
 };
@@ -264,7 +264,7 @@ export function resolveModel(
         return { ...AGENT_MODELS.complex, role: "primary", tier, budgetExceeded: false };
       }
     }
-    // Budget exceeded or no key → fall to DeepSeek R1 (still good reasoning)
+    // Budget exceeded or no key → fall to DeepSeek V3.2 (still good reasoning)
     return { ...AGENT_MODELS.daily, role: "daily", tier, budgetExceeded: true };
   }
 
@@ -310,7 +310,7 @@ export function tierLabel(tier: TaskTier): string {
     case "complex":
       return "🎯 Opus";
     case "daily":
-      return "🤖 DeepSeek";
+      return "🤖 DeepSeek V3";
     case "simple":
       return "⚡ Llama";
     case "uncensored":

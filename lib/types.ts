@@ -97,7 +97,7 @@ export const SUPPORTED_MODELS: Record<string, { label: string; provider: string;
     { label: "GPT-4o Mini", provider: "openai", id: "gpt-4o-mini" },
   ],
   venice: [
-    { label: "DeepSeek R1 (Private)", provider: "venice", id: "deepseek-ai-DeepSeek-R1" },
+    { label: "DeepSeek V3.2 (Private)", provider: "venice", id: "deepseek-v3.2" },
     { label: "Llama 3.3 70B (Fast)", provider: "venice", id: "llama-3.3-70b" },
     { label: "Venice Uncensored", provider: "venice", id: "venice-uncensored" },
     { label: "Qwen 3 235B", provider: "venice", id: "qwen3-235b-a22b-instruct-2507" },

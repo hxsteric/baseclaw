@@ -496,7 +496,7 @@ async function streamVenice(
     model,
     messages: formattedMessages,
     stream: true,
-    max_tokens: model.includes("DeepSeek-R1") ? 8192 : 4096,
+    max_tokens: model.includes("deepseek") ? 8192 : 4096,
     venice_parameters: {
       include_venice_system_prompt: false,
     },
