@@ -13,6 +13,28 @@ interface UseChatOptions {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_DELAY_MS = 1500;
 
+/** Build the config message to send over WebSocket */
+function buildConfigMsg(cfg: UserConfig, fid?: number | null): Record<string, unknown> {
+  const msg: Record<string, unknown> = {
+    action: "config",
+    model: cfg.model,
+    provider: cfg.provider,
+    keyMode: cfg.keyMode || "byok",
+  };
+
+  if (cfg.keyMode === "managed") {
+    msg.fid = fid;
+  } else {
+    msg.apiKey = cfg.apiKey;
+  }
+
+  if (cfg.uncensored) {
+    msg.uncensored = true;
+  }
+
+  return msg;
+}
+
 export function useChat(config: UserConfig | null, token: string | null, fid?: number | null, options?: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>(options?.initialMessages || []);
   const [isConnected, setIsConnected] = useState(false);
@@ -24,18 +46,24 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intentionalCloseRef = useRef(false);
 
-  // Stabilize config into a string key so the useEffect only re-runs
-  // when actual config values change, not on every React re-render.
-  const configKey = useMemo(
-    () => (config ? JSON.stringify(config) : null),
-    [config]
-  );
+  // Track uncensored separately so toggling it doesn't reconnect
+  const uncensoredRef = useRef(config?.uncensored ?? false);
 
-  // Connect to proxy
+  // Connection key: excludes `uncensored` so toggling it does NOT tear down the WebSocket.
+  // Only reconnects when provider/model/apiKey/keyMode actually change.
+  const connectionKey = useMemo(() => {
+    if (!config) return null;
+    const { uncensored, ...connectionFields } = config;
+    return JSON.stringify(connectionFields);
+  }, [config]);
+
+  // Connect to proxy — only runs when connection-critical fields change
   useEffect(() => {
-    if (!configKey) return;
+    if (!connectionKey || !config) return;
 
-    const cfg: UserConfig = JSON.parse(configKey);
+    // Snapshot the full config (including current uncensored) for initial connect
+    const cfg: UserConfig = { ...config };
+    uncensoredRef.current = cfg.uncensored ?? false;
     intentionalCloseRef.current = false;
     reconnectCountRef.current = 0;
 
@@ -50,27 +78,8 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
       wsRef.current = ws;
 
       ws.onopen = () => {
-        reconnectCountRef.current = 0; // Reset on successful connect
-
-        // Send config on connect
-        const configMsg: Record<string, unknown> = {
-          action: "config",
-          model: cfg.model,
-          provider: cfg.provider,
-          keyMode: cfg.keyMode || "byok",
-        };
-
-        if (cfg.keyMode === "managed") {
-          configMsg.fid = fid;
-        } else {
-          configMsg.apiKey = cfg.apiKey;
-        }
-
-        if (cfg.uncensored) {
-          configMsg.uncensored = true;
-        }
-
-        ws.send(JSON.stringify(configMsg));
+        reconnectCountRef.current = 0;
+        ws.send(JSON.stringify(buildConfigMsg(cfg, fid)));
       };
 
       ws.onmessage = (event) => {
@@ -177,7 +186,23 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
         wsRef.current = null;
       }
     };
-  }, [configKey, fid]);
+  }, [connectionKey, fid]);
+
+  // Live-update uncensored mode over existing WebSocket (no reconnect)
+  useEffect(() => {
+    const currentUncensored = config?.uncensored ?? false;
+
+    // Skip if value hasn't actually changed (including initial mount)
+    if (currentUncensored === uncensoredRef.current) return;
+    uncensoredRef.current = currentUncensored;
+
+    // Send config update over existing connection
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN || !config) return;
+
+    console.log(`[WS] Updating uncensored mode: ${currentUncensored}`);
+    ws.send(JSON.stringify(buildConfigMsg(config, fid)));
+  }, [config?.uncensored, config, fid]);
 
   // Debounced persistence of messages
   useEffect(() => {

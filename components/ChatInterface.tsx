@@ -147,27 +147,35 @@ export function ChatInterface() {
           </span>
         )}
 
-        {/* Uncensored Crypto Mode toggle */}
-        {isManaged && (
-          <button
-            onClick={handleToggleUncensored}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-code text-[8px] transition-all ${
-              isUncensored
-                ? "bg-[rgba(255,165,0,0.2)] text-orange-400 border border-orange-400/30"
-                : "bg-[var(--bg-tertiary)] text-[var(--text-ghost)] border border-transparent hover:border-[var(--border)]"
-            }`}
-            title={isUncensored ? "Uncensored crypto mode ON — no AI refusals on crypto topics" : "Enable uncensored crypto mode"}
-          >
-            <span>{isUncensored ? "\uD83D\uDD13" : "\uD83D\uDD12"}</span>
-            <span>{isUncensored ? "uncensored" : "standard"}</span>
-          </button>
-        )}
-
         <div className="flex items-center gap-1.5 ml-1">
           <span className="text-code text-[9px] text-[var(--text-ghost)]">live</span>
           <div className="h-1.5 w-1.5 rounded-full bg-[var(--success)] animate-pulse-glow" />
         </div>
       </div>
+
+      {/* Uncensored Crypto Mode toggle — full-width bar below header */}
+      {isManaged && (
+        <div className="flex items-center justify-center px-5 py-2 border-b border-[var(--border)]">
+          <button
+            onClick={handleToggleUncensored}
+            className={`flex items-center gap-2.5 px-4 py-2 rounded-xl text-code text-[11px] font-medium transition-all w-full max-w-sm justify-center ${
+              isUncensored
+                ? "bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-400 border border-orange-400/40 shadow-[0_0_12px_rgba(255,165,0,0.15)]"
+                : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--text-ghost)] hover:text-[var(--text-secondary)]"
+            }`}
+          >
+            {/* Toggle track */}
+            <div className={`relative w-8 h-[18px] rounded-full transition-all ${
+              isUncensored ? "bg-orange-500" : "bg-[var(--bg-primary)] border border-[var(--border)]"
+            }`}>
+              <div className={`absolute top-[2px] h-[14px] w-[14px] rounded-full transition-all ${
+                isUncensored ? "right-[2px] bg-white" : "left-[2px] bg-[var(--text-ghost)]"
+              }`} />
+            </div>
+            <span>{isUncensored ? "\uD83D\uDD13 Uncensored Crypto Mode" : "\uD83D\uDD12 Standard Mode"}</span>
+          </button>
+        </div>
+      )}
 
       {/* Connection status */}
       {!isConnected && (
