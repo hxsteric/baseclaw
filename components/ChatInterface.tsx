@@ -10,7 +10,7 @@ import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 
 export function ChatInterface() {
-  const { auth, activeAgentId, setActiveAgentId, setStep } = useApp();
+  const { auth, activeAgentId, setActiveAgentId, setStep, setConfig } = useApp();
   const { config } = useConfig();
   const { activeAgent, addAgent, getMessages, saveMessages, updateLastUsed, renameAgent } = useAgentStore();
 
@@ -48,6 +48,13 @@ export function ChatInterface() {
   const modelLabel = config?.model?.split("/").pop() || config?.model || "agent";
   const agentDisplayName = activeAgent?.name || "New Agent";
   const isManaged = config?.keyMode === "managed";
+  const isUncensored = config?.uncensored === true;
+
+  // Toggle uncensored crypto mode — updates config → triggers WebSocket reconnect
+  function handleToggleUncensored() {
+    if (!config) return;
+    setConfig({ ...config, uncensored: !config.uncensored });
+  }
 
   // Save Agent handler
   function handleSaveAgent() {
@@ -139,6 +146,23 @@ export function ChatInterface() {
             managed
           </span>
         )}
+
+        {/* Uncensored Crypto Mode toggle */}
+        {isManaged && (
+          <button
+            onClick={handleToggleUncensored}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-code text-[8px] transition-all ${
+              isUncensored
+                ? "bg-[rgba(255,165,0,0.2)] text-orange-400 border border-orange-400/30"
+                : "bg-[var(--bg-tertiary)] text-[var(--text-ghost)] border border-transparent hover:border-[var(--border)]"
+            }`}
+            title={isUncensored ? "Uncensored crypto mode ON — no AI refusals on crypto topics" : "Enable uncensored crypto mode"}
+          >
+            <span>{isUncensored ? "\uD83D\uDD13" : "\uD83D\uDD12"}</span>
+            <span>{isUncensored ? "uncensored" : "standard"}</span>
+          </button>
+        )}
+
         <div className="flex items-center gap-1.5 ml-1">
           <span className="text-code text-[9px] text-[var(--text-ghost)]">live</span>
           <div className="h-1.5 w-1.5 rounded-full bg-[var(--success)] animate-pulse-glow" />
