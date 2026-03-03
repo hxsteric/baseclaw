@@ -1,9 +1,15 @@
+export interface ImageAttachment {
+  data: string;      // base64 (no data: prefix)
+  mimeType: string;  // image/png, image/jpeg
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: number;
   streaming?: boolean;
+  images?: ImageAttachment[];
 }
 
 export type KeyMode = "byok" | "managed";

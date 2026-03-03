@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import http from "http";
 import { nanoid } from "nanoid";
-import { streamCompletion } from "./ai-client.js";
+import { streamCompletion, type StreamOptions } from "./ai-client.js";
 import {
   createSession,
   getSession,
@@ -24,6 +24,7 @@ import { generateEmbedding } from "./embeddings.js";
 const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
 const BRAVE_API_KEY = process.env.BRAVE_API_KEY || "";
+const BASESCAN_API_KEY = process.env.BASESCAN_API_KEY || "";
 
 const server = http.createServer(async (req, res) => {
   if (req.url === "/acp/status" && req.method === "GET") {
@@ -191,16 +192,19 @@ wss.on("connection", (ws, req) => {
             }
           }
 
-          // Add user message
+          // Add user message (with optional images)
+          const images = data.images as Array<{ data: string; mimeType: string }> | undefined;
           const userMsg: Message = {
             id: nanoid(),
             role: "user",
             content: message,
             timestamp: Date.now(),
+            ...(images && images.length > 0 ? { images } : {}),
           };
           addMessage(sessionId, userMsg);
 
           const runId = nanoid();
+          const hasImages = session.messages.some(m => m.images && m.images.length > 0);
 
           // Determine actual model/provider/key to use
           let actualModel = session.model;
@@ -215,7 +219,7 @@ wss.on("connection", (ws, req) => {
             const currentCost = sub.costUsd || 0;
             const extraBudget = sub.extraBudget || 0;
 
-            const resolved = resolveModel(message, plan, currentCost, extraBudget, session.uncensored === true);
+            const resolved = resolveModel(message, plan, currentCost, extraBudget, session.uncensored === true, hasImages);
             const resolvedKey = getProviderKey(resolved.provider);
 
             if (resolvedKey) {
@@ -275,7 +279,11 @@ wss.on("connection", (ws, req) => {
                 send(ws, { type: "error", message: error });
               },
             },
-            BRAVE_API_KEY || undefined
+            BRAVE_API_KEY || undefined,
+            {
+              basescanApiKey: BASESCAN_API_KEY || undefined,
+              hasImages,
+            }
           );
           break;
         }

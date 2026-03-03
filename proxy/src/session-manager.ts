@@ -1,8 +1,14 @@
+export interface ImageAttachment {
+  data: string;      // base64 (no data: prefix)
+  mimeType: string;  // image/png, image/jpeg, etc.
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  images?: ImageAttachment[];
 }
 
 export type KeyMode = "byok" | "managed";

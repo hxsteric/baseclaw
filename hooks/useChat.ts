@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { nanoid } from "nanoid";
-import type { ChatMessage, UserConfig } from "@/lib/types";
+import type { ChatMessage, UserConfig, ImageAttachment } from "@/lib/types";
 import { WS_PROXY_URL } from "@/lib/constants";
 
 interface UseChatOptions {
@@ -217,7 +217,7 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
   }, [messages, options?.onMessagesUpdate]);
 
   const sendMessage = useCallback(
-    (text: string) => {
+    (text: string, images?: ImageAttachment[]) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !text.trim() || isStreaming) return;
 
       const userMsg: ChatMessage = {
@@ -225,6 +225,7 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
         role: "user",
         content: text.trim(),
         timestamp: Date.now(),
+        ...(images && images.length > 0 ? { images } : {}),
       };
 
       setMessages((prev) => [...prev, userMsg]);
@@ -233,6 +234,7 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
         JSON.stringify({
           action: "send",
           message: text.trim(),
+          ...(images && images.length > 0 ? { images } : {}),
         })
       );
     },

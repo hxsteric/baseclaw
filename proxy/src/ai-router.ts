@@ -88,6 +88,12 @@ export const AGENT_MODELS = {
     primary: { model: "llama-3.3-70b", provider: "venice" } as ModelConfig,
     fallbacks: [{ model: "deepseek-v3.2", provider: "venice" }] as ModelConfig[],
   },
+
+  // Vision: Qwen3 VL for image/chart analysis via Venice
+  vision: {
+    model: "qwen3-vl-235b-a22b",
+    provider: "venice",
+  } as ModelConfig,
 };
 
 // ─── Task Classification ─────────────────────────────────────────────
@@ -247,8 +253,14 @@ export function resolveModel(
   plan: SubscriptionPlan,
   currentCostUsd: number,
   extraBudget: number = 0,
-  uncensored: boolean = false
+  uncensored: boolean = false,
+  hasImages: boolean = false
 ): ResolvedModel {
+  // Vision: route to Qwen3 VL when message has images
+  if (hasImages) {
+    return { ...AGENT_MODELS.vision, role: "image", tier: "daily", budgetExceeded: false };
+  }
+
   // Uncensored mode: route everything through Venice Uncensored
   if (uncensored) {
     return { ...AGENT_MODELS.uncensored, role: "daily", tier: "uncensored", budgetExceeded: false };

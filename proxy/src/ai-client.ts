@@ -1,5 +1,6 @@
 import type { Message } from "./session-manager.js";
 import { braveWebSearch } from "./brave-search.js";
+import { fetchCryptoContext } from "./crypto-data.js";
 
 interface StreamCallbacks {
   onDelta: (text: string) => void;
@@ -95,27 +96,35 @@ function getWebSearchToolAnthropic() {
   };
 }
 
+export interface StreamOptions {
+  braveApiKey?: string;
+  basescanApiKey?: string;
+  hasImages?: boolean;
+}
+
 export async function streamCompletion(
   provider: string,
   model: string,
   apiKey: string,
   messages: Message[],
   callbacks: StreamCallbacks,
-  braveApiKey?: string
+  braveApiKey?: string,
+  opts?: StreamOptions
 ): Promise<void> {
+  const options = { braveApiKey, ...opts };
   switch (provider) {
     case "anthropic":
-      return streamAnthropic(model, apiKey, messages, callbacks, braveApiKey);
+      return streamAnthropic(model, apiKey, messages, callbacks, options.braveApiKey);
     case "openai":
-      return streamOpenAI(model, apiKey, messages, callbacks, braveApiKey);
+      return streamOpenAI(model, apiKey, messages, callbacks, options.braveApiKey);
     case "openrouter":
-      return streamOpenRouter(model, apiKey, messages, callbacks, braveApiKey);
+      return streamOpenRouter(model, apiKey, messages, callbacks, options.braveApiKey);
     case "kimi":
-      return streamKimi(model, apiKey, messages, callbacks, braveApiKey);
+      return streamKimi(model, apiKey, messages, callbacks, options.braveApiKey);
     case "deepseek":
-      return streamDeepSeek(model, apiKey, messages, callbacks, braveApiKey);
+      return streamDeepSeek(model, apiKey, messages, callbacks, options.braveApiKey);
     case "venice":
-      return streamVenice(model, apiKey, messages, callbacks, braveApiKey);
+      return streamVenice(model, apiKey, messages, callbacks, options);
     case "google":
       return streamGoogle(model, apiKey, messages, callbacks);
     default:
@@ -132,10 +141,24 @@ async function streamAnthropic(
   callbacks: StreamCallbacks,
   braveApiKey?: string
 ): Promise<void> {
-  const formattedMessages = messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
+  const formattedMessages = messages.map((m) => {
+    if (m.role === "user" && m.images && m.images.length > 0) {
+      // Anthropic vision format: content array with image blocks
+      const content: Array<Record<string, unknown>> = [
+        ...m.images.map(img => ({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mimeType,
+            data: img.data,
+          },
+        })),
+        { type: "text", text: m.content },
+      ];
+      return { role: m.role, content };
+    }
+    return { role: m.role, content: m.content };
+  });
 
   const body: Record<string, unknown> = {
     model,
@@ -451,11 +474,41 @@ async function streamVenice(
   apiKey: string,
   messages: Message[],
   callbacks: StreamCallbacks,
-  _braveApiKey?: string  // Not used — Venice has its own search
+  opts?: StreamOptions
 ): Promise<void> {
-  const formattedMessages = [
-    { role: "system" as const, content: getSystemPrompt() },
-    ...messages.map((m) => ({ role: m.role, content: m.content })),
+  // Pre-fetch crypto data if the last user message matches patterns
+  const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+  let cryptoContext = "";
+  if (lastUserMsg) {
+    try {
+      cryptoContext = await fetchCryptoContext(lastUserMsg.content, opts?.basescanApiKey);
+      if (cryptoContext) {
+        console.log(`[CryptoData] Injecting live data (${cryptoContext.length} chars)`);
+      }
+    } catch (err) {
+      console.error("[CryptoData] Pre-fetch failed:", err);
+    }
+  }
+
+  const systemPrompt = getSystemPrompt() + cryptoContext;
+
+  // Format messages — support vision (multipart content) when images present
+  const formattedMessages: Array<Record<string, unknown>> = [
+    { role: "system", content: systemPrompt },
+    ...messages.map((m) => {
+      if (m.role === "user" && m.images && m.images.length > 0) {
+        // Vision format: multipart content array
+        const content: Array<Record<string, unknown>> = [
+          { type: "text", text: m.content },
+          ...m.images.map(img => ({
+            type: "image_url",
+            image_url: { url: `data:${img.mimeType};base64,${img.data}` },
+          })),
+        ];
+        return { role: m.role, content };
+      }
+      return { role: m.role, content: m.content };
+    }),
   ];
 
   const body: Record<string, unknown> = {
@@ -468,6 +521,7 @@ async function streamVenice(
       enable_web_search: "auto",       // Model decides when to search
       enable_web_citations: true,       // Cite sources in responses
       enable_web_scraping: true,        // Scrape URLs found in messages
+      enable_x_search: true,           // Search X/Twitter for crypto alpha & sentiment
     },
   };
 

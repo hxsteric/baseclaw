@@ -30,6 +30,19 @@ export function ChatMessage({ message }: { message: ChatMessageType }) {
             : "glass rounded-tl-lg"
         )}
       >
+        {/* Render images if present */}
+        {message.images && message.images.length > 0 && (
+          <div className="mb-2">
+            {message.images.map((img, i) => (
+              <img
+                key={i}
+                src={`data:${img.mimeType};base64,${img.data}`}
+                alt="Uploaded"
+                className="max-w-full max-h-48 rounded-lg object-cover"
+              />
+            ))}
+          </div>
+        )}
         <p className="text-body text-[13px] whitespace-pre-wrap break-words leading-relaxed relative z-10 text-[var(--text-primary)]">{message.content}</p>
         {message.streaming && (
           <span className="inline-block ml-0.5 w-[2px] h-[14px] bg-[var(--rose)] animate-blink align-text-bottom" />
