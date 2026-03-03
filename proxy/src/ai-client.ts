@@ -442,6 +442,23 @@ async function streamDeepSeek(
 }
 
 // ---------- Venice AI ----------
+// Venice models do NOT support function calling (tools/tool_choice).
+// Instead we do a manual pre-search: if the query looks like it needs
+// real-time data, run Brave Search first and inject results into the prompt.
+
+const NEEDS_SEARCH_PATTERNS = [
+  /\b(price|prices|pricing|worth|value)\b.*\b(of|for|is|are)\b/i,
+  /\b(how much|current|latest|today|now)\b/i,
+  /\b(market ?cap|tvl|volume|liquidity|apy|apr)\b/i,
+  /\b(news|announcement|update|launch|release)\b/i,
+  /\b(what happened|who is|tell me about)\b/i,
+  /\b(search|look up|find|research)\b/i,
+  /\b(revenue|earnings|stats|metrics|data)\b/i,
+];
+
+function queryNeedsSearch(text: string): boolean {
+  return NEEDS_SEARCH_PATTERNS.some((p) => p.test(text));
+}
 
 async function streamVenice(
   model: string,
@@ -450,20 +467,97 @@ async function streamVenice(
   callbacks: StreamCallbacks,
   braveApiKey?: string
 ): Promise<void> {
-  await streamOpenAICompatible(
-    "https://api.venice.ai/api/v1/chat/completions",
-    {
+  const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+
+  // Manual pre-search for queries that need real-time data
+  let searchContext = "";
+  if (braveApiKey && lastUserMsg && queryNeedsSearch(lastUserMsg)) {
+    try {
+      callbacks.onDelta("🔍 *Searching the web...*\n\n");
+      const searchResults = await braveWebSearch(lastUserMsg, braveApiKey, 8);
+      if (searchResults.length > 0) {
+        searchContext = "\n\n--- Web Search Results ---\n" +
+          searchResults.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description}`).join("\n\n") +
+          "\n--- End Search Results ---\n\nUse these search results to provide accurate, up-to-date information. Cite sources when relevant.";
+      }
+    } catch (err) {
+      console.error("[Venice] Pre-search failed:", err);
+    }
+  }
+
+  // Build messages with search context injected into system prompt
+  const systemPrompt = getSystemPrompt() + searchContext;
+  const formattedMessages = [
+    { role: "system" as const, content: systemPrompt },
+    ...messages.map((m) => ({ role: m.role, content: m.content })),
+  ];
+
+  const body: Record<string, unknown> = {
+    model,
+    messages: formattedMessages,
+    stream: true,
+    max_tokens: model.includes("DeepSeek-R1") ? 8192 : 4096,
+    venice_parameters: {
+      include_venice_system_prompt: false,
+    },
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
+
+  const res = await fetch("https://api.venice.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    model,
-    messages,
-    callbacks,
-    braveApiKey,
-    apiKey,
-    "https://api.venice.ai/api/v1/chat/completions",
-    "Venice"
-  );
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
+
+  if (!res.ok) {
+    const err = await res.text();
+    callbacks.onError(`Venice error (${res.status}): ${err}`);
+    return;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    callbacks.onError("No response body");
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let fullText = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") continue;
+
+      try {
+        const parsed = JSON.parse(data);
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullText += delta;
+          callbacks.onDelta(delta);
+        }
+      } catch {
+        // Skip unparseable lines
+      }
+    }
+  }
+
+  callbacks.onFinal(fullText);
 }
 
 // ---------- Google (Gemini) ----------
