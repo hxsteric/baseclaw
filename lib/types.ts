@@ -25,8 +25,9 @@ export const USDC_DECIMALS = 6;
 export interface UserConfig {
   apiKey: string;
   model: string;
-  provider: "anthropic" | "openai" | "openrouter" | "kimi";
+  provider: "anthropic" | "openai" | "openrouter" | "venice" | "kimi";
   keyMode: KeyMode;
+  uncensored?: boolean;
 }
 
 export interface UserProfile {
@@ -94,6 +95,13 @@ export const SUPPORTED_MODELS: Record<string, { label: string; provider: string;
   openai: [
     { label: "GPT-4o", provider: "openai", id: "gpt-4o" },
     { label: "GPT-4o Mini", provider: "openai", id: "gpt-4o-mini" },
+  ],
+  venice: [
+    { label: "DeepSeek R1 (Private)", provider: "venice", id: "deepseek-ai-DeepSeek-R1" },
+    { label: "Llama 3.3 70B (Fast)", provider: "venice", id: "llama-3.3-70b" },
+    { label: "Venice Uncensored", provider: "venice", id: "venice-uncensored" },
+    { label: "Qwen 3 235B", provider: "venice", id: "qwen3-235b-a22b-instruct-2507" },
+    { label: "Grok 4.1 Fast", provider: "venice", id: "grok-41-fast" },
   ],
   openrouter: [
     { label: "Claude Sonnet 4", provider: "openrouter", id: "anthropic/claude-sonnet-4" },

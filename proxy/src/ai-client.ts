@@ -114,6 +114,8 @@ export async function streamCompletion(
       return streamKimi(model, apiKey, messages, callbacks, braveApiKey);
     case "deepseek":
       return streamDeepSeek(model, apiKey, messages, callbacks, braveApiKey);
+    case "venice":
+      return streamVenice(model, apiKey, messages, callbacks, braveApiKey);
     case "google":
       return streamGoogle(model, apiKey, messages, callbacks);
     default:
@@ -436,6 +438,31 @@ async function streamDeepSeek(
     apiKey,
     "https://api.deepseek.com/v1/chat/completions",
     "DeepSeek"
+  );
+}
+
+// ---------- Venice AI ----------
+
+async function streamVenice(
+  model: string,
+  apiKey: string,
+  messages: Message[],
+  callbacks: StreamCallbacks,
+  braveApiKey?: string
+): Promise<void> {
+  await streamOpenAICompatible(
+    "https://api.venice.ai/api/v1/chat/completions",
+    {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    model,
+    messages,
+    callbacks,
+    braveApiKey,
+    apiKey,
+    "https://api.venice.ai/api/v1/chat/completions",
+    "Venice"
   );
 }
 

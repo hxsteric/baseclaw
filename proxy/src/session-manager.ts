@@ -16,6 +16,7 @@ export interface Session {
   keyMode: KeyMode;
   fid: number | null;
   plan: string; // "free" | "starter" | "pro" | "business"
+  uncensored: boolean;
   createdAt: number;
   lastActivity: number;
 }
@@ -47,7 +48,7 @@ export function getSession(sessionId: string): Session | undefined {
 
 export function createSession(
   sessionId: string,
-  config: { model: string; provider: string; apiKey: string; keyMode?: KeyMode; fid?: number; plan?: string }
+  config: { model: string; provider: string; apiKey: string; keyMode?: KeyMode; fid?: number; plan?: string; uncensored?: boolean }
 ): Session {
   const now = Date.now();
   const session: Session = {
@@ -59,6 +60,7 @@ export function createSession(
     keyMode: config.keyMode || "byok",
     fid: config.fid || null,
     plan: config.plan || "free",
+    uncensored: config.uncensored || false,
     createdAt: now,
     lastActivity: now,
   };
@@ -68,7 +70,7 @@ export function createSession(
 
 export function updateSessionConfig(
   sessionId: string,
-  config: { model: string; provider: string; apiKey: string; keyMode?: KeyMode; fid?: number; plan?: string }
+  config: { model: string; provider: string; apiKey: string; keyMode?: KeyMode; fid?: number; plan?: string; uncensored?: boolean }
 ): void {
   const session = sessions.get(sessionId);
   if (session) {
@@ -78,6 +80,7 @@ export function updateSessionConfig(
     if (config.keyMode) session.keyMode = config.keyMode;
     if (config.fid) session.fid = config.fid;
     if (config.plan) session.plan = config.plan;
+    if (config.uncensored !== undefined) session.uncensored = config.uncensored;
     session.lastActivity = Date.now();
   }
 }

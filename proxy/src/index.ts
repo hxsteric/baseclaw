@@ -19,15 +19,44 @@ import {
   type SubscriptionPlan,
 } from "./ai-router.js";
 import { startAcp, getAcpStatus } from "./acp-handler.js";
+import { generateEmbedding } from "./embeddings.js";
 
 const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
 const BRAVE_API_KEY = process.env.BRAVE_API_KEY || "";
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   if (req.url === "/acp/status" && req.method === "GET") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok", service: "clawdbot-proxy", acp: getAcpStatus() }));
+  } else if (req.url === "/embeddings" && req.method === "POST") {
+    // Venice embeddings endpoint (RAG foundation)
+    try {
+      const veniceKey = process.env.MANAGED_VENICE_KEY;
+      if (!veniceKey) {
+        res.writeHead(503, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Embeddings service not configured" }));
+        return;
+      }
+
+      let body = "";
+      for await (const chunk of req) body += chunk;
+      const { text } = JSON.parse(body);
+
+      if (!text) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing 'text' field" }));
+        return;
+      }
+
+      const result = await generateEmbedding(text, veniceKey);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      console.error("[Embeddings] Error:", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Embeddings generation failed" }));
+    }
   } else {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok", service: "clawdbot-proxy" }));
@@ -85,6 +114,7 @@ wss.on("connection", (ws, req) => {
               keyMode: "managed" as const,
               fid: data.fid,
               plan: subscription.plan,
+              uncensored: data.uncensored === true,
             };
 
             const existing = getSession(sessionId);
@@ -185,7 +215,7 @@ wss.on("connection", (ws, req) => {
             const currentCost = sub.costUsd || 0;
             const extraBudget = sub.extraBudget || 0;
 
-            const resolved = resolveModel(message, plan, currentCost, extraBudget);
+            const resolved = resolveModel(message, plan, currentCost, extraBudget, session.uncensored === true);
             const resolvedKey = getProviderKey(resolved.provider);
 
             if (resolvedKey) {

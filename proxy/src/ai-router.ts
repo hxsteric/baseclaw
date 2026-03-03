@@ -2,21 +2,23 @@
  * AI Router — Clawdbot Agent Model Configuration
  *
  * 2-key setup:
- *   MANAGED_ANTHROPIC_KEY  → Claude Opus/Sonnet (complex tasks only, metered)
- *   MANAGED_OPENROUTER_KEY → Everything else via OpenRouter (unlimited)
+ *   MANAGED_ANTHROPIC_KEY → Claude Opus/Sonnet (complex tasks only, metered)
+ *   MANAGED_VENICE_KEY    → Everything else via Venice AI (private, uncensored)
  *
  * Task classification:
- *   complex  → Claude Opus 4.6 or Sonnet 4.5  (direct Anthropic, metered)
- *   daily    → DeepSeek R1 via OpenRouter       (code gen, research, content — free)
- *   simple   → Gemini Flash-Lite via OpenRouter  (heartbeats, lookups, classification — free)
+ *   complex    → Claude Opus 4.6              (direct Anthropic, metered)
+ *   daily      → DeepSeek R1 via Venice       (code gen, research, content — private)
+ *   simple     → Llama 3.3 70B via Venice     (lookups, classification — fast, private)
+ *   uncensored → Venice Uncensored            (no refusals, crypto-native)
  *
  * Agent model config:
- *   complex:    anthropic/claude-opus-4-20250514       (direct Anthropic, metered)
- *   daily:      deepseek/deepseek-r1                   (via OpenRouter, free)
- *   simple:     google/gemini-2.5-flash-lite           (via OpenRouter, free)
- *   heartbeat:  google/gemini-2.5-flash-lite           (via OpenRouter, free, every 30m)
- *   subagents:  deepseek/deepseek-r1                   (via OpenRouter, free)
- *   imageModel: google/gemini-3-flash-preview                  (via OpenRouter, free)
+ *   complex:     anthropic/claude-opus-4-20250514       (direct Anthropic, metered)
+ *   daily:       deepseek-ai-DeepSeek-R1                (via Venice, private)
+ *   simple:      llama-3.3-70b                          (via Venice, fast)
+ *   heartbeat:   llama-3.3-70b                          (via Venice, every 30m)
+ *   subagents:   deepseek-ai-DeepSeek-R1                (via Venice, private)
+ *   uncensored:  venice-uncensored                      (via Venice, 2.2% refusal)
+ *   imageModel:  llama-3.3-70b                          (via Venice)
  *
  * Cost limits (only Opus/Sonnet counts):
  *   Starter:  $5/month  + top-ups
@@ -26,13 +28,13 @@
 
 export type SubscriptionPlan = "free" | "starter" | "pro" | "business";
 
-export type TaskTier = "complex" | "daily" | "simple";
+export type TaskTier = "complex" | "daily" | "simple" | "uncensored";
 
 export type ModelRole = "primary" | "daily" | "simple" | "heartbeat" | "subagent" | "image";
 
 export interface ModelConfig {
   model: string;
-  provider: string; // "anthropic" = direct key, "openrouter" = via OpenRouter
+  provider: string; // "anthropic" = direct key, "venice" = via Venice AI
 }
 
 // ─── Agent Model Stack ───────────────────────────────────────────────
@@ -44,40 +46,47 @@ export const AGENT_MODELS = {
     provider: "anthropic",
   } as ModelConfig,
 
-  // Daily work: DeepSeek R1 via OpenRouter (free)
-  // Code generation, research, content creation — 90% cheaper than Opus
+  // Daily work: DeepSeek R1 via Venice AI (private inference)
+  // Code generation, research, content creation — private, uncensored
   daily: {
-    model: "deepseek/deepseek-r1",
-    provider: "openrouter",
+    model: "deepseek-ai-DeepSeek-R1",
+    provider: "venice",
   } as ModelConfig,
 
-  // Simple: Gemini Flash-Lite via OpenRouter (free)
-  // Heartbeats, quick lookups, classification — ~$0.50/M tokens
+  // Simple: Llama 3.3 70B via Venice AI (fast, private)
+  // Heartbeats, quick lookups, classification — fast response times
   simple: {
-    model: "google/gemini-2.5-flash-lite",
-    provider: "openrouter",
+    model: "llama-3.3-70b",
+    provider: "venice",
   } as ModelConfig,
 
-  // Heartbeat: same as simple (every 30m, unlimited)
+  // Uncensored: Venice Uncensored (2.2% refusal rate)
+  // No crypto discussion refusals — tokens, strategies, protocols
+  uncensored: {
+    model: "venice-uncensored",
+    provider: "venice",
+  } as ModelConfig,
+
+  // Heartbeat: Llama 3.3 70B via Venice (every 30m, fast)
   heartbeat: {
-    model: "google/gemini-2.5-flash-lite",
-    provider: "openrouter",
+    model: "llama-3.3-70b",
+    provider: "venice",
     every: "30m",
     target: "last" as const,
   },
 
-  // Subagents: DeepSeek R1 via OpenRouter (free)
+  // Subagents: DeepSeek R1 via Venice (private)
   subagents: {
-    model: "deepseek/deepseek-r1",
-    provider: "openrouter",
+    model: "deepseek-ai-DeepSeek-R1",
+    provider: "venice",
     maxConcurrent: 1,
     archiveAfterMinutes: 60,
   },
 
-  // Image/Vision: Gemini 3 Flash via OpenRouter (free)
+  // Image/Vision: Llama 3.3 70B via Venice
   imageModel: {
-    primary: { model: "google/gemini-3-flash-preview", provider: "openrouter" } as ModelConfig,
-    fallbacks: [{ model: "openai/gpt-5.2", provider: "openrouter" }] as ModelConfig[],
+    primary: { model: "llama-3.3-70b", provider: "venice" } as ModelConfig,
+    fallbacks: [{ model: "deepseek-ai-DeepSeek-R1", provider: "venice" }] as ModelConfig[],
   },
 };
 
@@ -159,11 +168,10 @@ export const MODEL_COSTS: Record<string, { input: number; output: number; metere
   // METERED — direct Anthropic, counts against tier cost limit
   "claude-opus-4-20250514": { input: 15.0, output: 75.0, metered: true },
   "claude-sonnet-4-5-20250929": { input: 3.0, output: 15.0, metered: true },
-  // UNMETERED — via OpenRouter, free for all tiers
-  "deepseek/deepseek-r1": { input: 0.0, output: 0.0, metered: false },
-  "google/gemini-2.5-flash-lite": { input: 0.0, output: 0.0, metered: false },
-  "google/gemini-3-flash-preview": { input: 0.0, output: 0.0, metered: false },
-  "openai/gpt-5.2": { input: 0.0, output: 0.0, metered: false },
+  // UNMETERED — via Venice AI, private inference for all tiers
+  "deepseek-ai-DeepSeek-R1": { input: 0.0, output: 0.0, metered: false },
+  "llama-3.3-70b": { input: 0.0, output: 0.0, metered: false },
+  "venice-uncensored": { input: 0.0, output: 0.0, metered: false },
 };
 
 // Monthly cost caps per plan (USD) — only metered model usage counts
@@ -227,18 +235,25 @@ export interface ResolvedModel extends ModelConfig {
  * Resolve which model to use based on task classification and budget.
  *
  * Flow:
- *   1. Classify task → complex / daily / simple
- *   2. If complex AND has budget → Claude Opus (metered)
- *   3. If complex AND no budget → DeepSeek R1 (fallback, free)
- *   4. If daily → DeepSeek R1 (free)
- *   5. If simple → Gemini Flash-Lite (free)
+ *   1. If uncensored mode → Venice Uncensored (no refusals)
+ *   2. Classify task → complex / daily / simple
+ *   3. If complex AND has budget → Claude Opus (metered)
+ *   4. If complex AND no budget → DeepSeek R1 (fallback, private)
+ *   5. If daily → DeepSeek R1 (private)
+ *   6. If simple → Llama 3.3 70B (fast, private)
  */
 export function resolveModel(
   prompt: string,
   plan: SubscriptionPlan,
   currentCostUsd: number,
-  extraBudget: number = 0
+  extraBudget: number = 0,
+  uncensored: boolean = false
 ): ResolvedModel {
+  // Uncensored mode: route everything through Venice Uncensored
+  if (uncensored) {
+    return { ...AGENT_MODELS.uncensored, role: "daily", tier: "uncensored", budgetExceeded: false };
+  }
+
   const tier = classifyTask(prompt);
 
   if (tier === "complex") {
@@ -281,8 +296,8 @@ export function getProviderKey(provider: string): string | null {
   switch (provider) {
     case "anthropic":
       return process.env.MANAGED_ANTHROPIC_KEY || null;
-    case "openrouter":
-      return process.env.MANAGED_OPENROUTER_KEY || null;
+    case "venice":
+      return process.env.MANAGED_VENICE_KEY || null;
     default:
       return null;
   }
@@ -297,7 +312,9 @@ export function tierLabel(tier: TaskTier): string {
     case "daily":
       return "🤖 DeepSeek";
     case "simple":
-      return "⚡ Flash";
+      return "⚡ Llama";
+    case "uncensored":
+      return "🔓 Uncensored";
   }
 }
 
