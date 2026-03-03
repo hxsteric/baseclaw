@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# proxy build output
+proxy/dist/
+
+# contracts build artifacts
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+
+# python
+__pycache__/
