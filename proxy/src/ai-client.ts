@@ -1,6 +1,7 @@
 import type { Message } from "./session-manager.js";
 import { braveWebSearch } from "./brave-search.js";
 import { fetchCryptoContext } from "./crypto-data.js";
+import { needsXSearch, searchX } from "./x-search.js";
 
 interface StreamCallbacks {
   onDelta: (text: string) => void;
@@ -99,6 +100,7 @@ function getWebSearchToolAnthropic() {
 export interface StreamOptions {
   braveApiKey?: string;
   basescanApiKey?: string;
+  xaiApiKey?: string;
   hasImages?: boolean;
 }
 
@@ -476,21 +478,36 @@ async function streamVenice(
   callbacks: StreamCallbacks,
   opts?: StreamOptions
 ): Promise<void> {
-  // Pre-fetch crypto data if the last user message matches patterns
+  // Pre-fetch crypto data + X search in parallel if patterns match
   const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
   let cryptoContext = "";
+  let xContext = "";
   if (lastUserMsg) {
-    try {
-      cryptoContext = await fetchCryptoContext(lastUserMsg.content, opts?.basescanApiKey);
-      if (cryptoContext) {
-        console.log(`[CryptoData] Injecting live data (${cryptoContext.length} chars)`);
-      }
-    } catch (err) {
-      console.error("[CryptoData] Pre-fetch failed:", err);
+    const fetches: Promise<void>[] = [];
+
+    // Crypto data (CoinGecko, DeFi Llama, Basescan)
+    fetches.push(
+      fetchCryptoContext(lastUserMsg.content, opts?.basescanApiKey)
+        .then(r => { cryptoContext = r; })
+        .catch(err => console.error("[CryptoData] Pre-fetch failed:", err))
+    );
+
+    // X/Twitter search via xAI Grok
+    if (opts?.xaiApiKey && needsXSearch(lastUserMsg.content)) {
+      fetches.push(
+        searchX(lastUserMsg.content, opts.xaiApiKey)
+          .then(r => { xContext = r; })
+          .catch(err => console.error("[X-Search] Pre-fetch failed:", err))
+      );
     }
+
+    await Promise.allSettled(fetches);
+
+    if (cryptoContext) console.log(`[CryptoData] Injecting live data (${cryptoContext.length} chars)`);
+    if (xContext) console.log(`[X-Search] Injecting X data (${xContext.length} chars)`);
   }
 
-  const systemPrompt = getSystemPrompt() + cryptoContext;
+  const systemPrompt = getSystemPrompt() + cryptoContext + xContext;
 
   // Format messages — support vision (multipart content) when images present
   const formattedMessages: Array<Record<string, unknown>> = [
@@ -521,7 +538,6 @@ async function streamVenice(
       enable_web_search: "auto",       // Model decides when to search
       enable_web_citations: true,       // Cite sources in responses
       enable_web_scraping: true,        // Scrape URLs found in messages
-      enable_x_search: true,           // Search X/Twitter for crypto alpha & sentiment
     },
   };
 

@@ -25,6 +25,7 @@ const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
 const BRAVE_API_KEY = process.env.BRAVE_API_KEY || "";
 const BASESCAN_API_KEY = process.env.BASESCAN_API_KEY || "";
+const XAI_API_KEY = process.env.XAI_API_KEY || "";
 
 const server = http.createServer(async (req, res) => {
   if (req.url === "/acp/status" && req.method === "GET") {
@@ -282,6 +283,7 @@ wss.on("connection", (ws, req) => {
             BRAVE_API_KEY || undefined,
             {
               basescanApiKey: BASESCAN_API_KEY || undefined,
+              xaiApiKey: XAI_API_KEY || undefined,
               hasImages,
             }
           );
