@@ -3,7 +3,8 @@
  *
  * Uses Grok's x_search tool to search actual X/Twitter posts.
  * Called as a pre-fetch step — results injected into Venice system prompt.
- * Cost: ~$0.005 per search call.
+ * Endpoint: POST /v1/responses (NOT /v1/chat/completions)
+ * Cost: ~$0.005 per search call + token costs.
  */
 
 // ─── Pattern Detection ───────────────────────────────────────────────
@@ -28,15 +29,11 @@ export function needsXSearch(message: string): boolean {
   return X_PATTERNS.some(p => p.test(message));
 }
 
-// ─── xAI Grok API ───────────────────────────────────────────────────
-
-interface XSearchResult {
-  text: string;
-  citations: string[];
-}
+// ─── xAI Grok API (/v1/responses) ───────────────────────────────────
 
 /**
  * Search X/Twitter via xAI Grok's x_search tool.
+ * Uses the /v1/responses endpoint (NOT /v1/chat/completions).
  * Returns formatted context string or empty string on failure.
  */
 export async function searchX(
@@ -47,20 +44,20 @@ export async function searchX(
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const timeout = setTimeout(() => controller.abort(), 20_000);
 
-    const res = await fetch("https://api.x.ai/v1/chat/completions", {
+    const res = await fetch("https://api.x.ai/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "grok-3-mini-fast",
-        messages: [
+        model: "grok-3-mini",
+        input: [
           {
             role: "system",
-            content: "You are a crypto research assistant. Search X/Twitter and summarize what people are saying. Include usernames, key quotes, and sentiment. Be concise and factual.",
+            content: "You are a crypto research assistant. Search X/Twitter and summarize what people are saying. Include @usernames, key quotes, and sentiment. Be concise and factual. List specific posts you find.",
           },
           {
             role: "user",
@@ -83,28 +80,36 @@ export async function searchX(
     }
 
     const data = await res.json() as any;
-    const content = data.choices?.[0]?.message?.content || "";
 
-    if (!content) return "";
-
-    // Extract citations if available
-    const citations: string[] = [];
-    if (data.citations) {
-      for (const c of data.citations) {
-        if (c.url) citations.push(c.url);
+    // /v1/responses returns output[] array with message items
+    let content = "";
+    if (data.output && Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (item.type === "message" && item.content) {
+          for (const block of item.content) {
+            if (block.type === "text") {
+              content += block.text;
+            }
+          }
+        }
       }
     }
+    // Fallback: try choices format (in case API changes)
+    if (!content && data.choices?.[0]?.message?.content) {
+      content = data.choices[0].message.content;
+    }
 
-    const citationText = citations.length > 0
-      ? `\nSources: ${citations.slice(0, 5).join(", ")}`
-      : "";
+    if (!content) {
+      console.error("[X-Search] No content in response:", JSON.stringify(data).slice(0, 200));
+      return "";
+    }
 
     console.log(`[X-Search] Got ${content.length} chars for: "${query.slice(0, 50)}..."`);
 
-    return `\n\n[X/TWITTER DATA — fetched ${new Date().toISOString()}]\n${content}${citationText}`;
+    return `\n\n[X/TWITTER DATA — fetched ${new Date().toISOString()}]\n${content}`;
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      console.error("[X-Search] Request timed out (15s)");
+      console.error("[X-Search] Request timed out (20s)");
     } else {
       console.error("[X-Search] Error:", err);
     }
