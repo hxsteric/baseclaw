@@ -53,7 +53,7 @@ export async function searchX(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "grok-3-mini",
+        model: "grok-4-1-fast-non-reasoning",
         input: [
           {
             role: "system",
