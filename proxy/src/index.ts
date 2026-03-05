@@ -31,6 +31,16 @@ const server = http.createServer(async (req, res) => {
   if (req.url === "/acp/status" && req.method === "GET") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok", service: "clawdbot-proxy", acp: getAcpStatus() }));
+  } else if (req.url === "/debug/config" && req.method === "GET") {
+    // Diagnostic endpoint — shows which API keys are configured
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      BRAVE_API_KEY: BRAVE_API_KEY ? "set" : "MISSING",
+      BASESCAN_API_KEY: BASESCAN_API_KEY ? "set" : "MISSING",
+      XAI_API_KEY: XAI_API_KEY ? "set" : "MISSING",
+      MANAGED_VENICE_KEY: process.env.MANAGED_VENICE_KEY ? "set" : "MISSING",
+      MANAGED_ANTHROPIC_KEY: process.env.MANAGED_ANTHROPIC_KEY ? "set" : "MISSING",
+    }));
   } else if (req.url === "/embeddings" && req.method === "POST") {
     // Venice embeddings endpoint (RAG foundation)
     try {
