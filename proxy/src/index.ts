@@ -327,6 +327,9 @@ function send(ws: WebSocket, data: Record<string, unknown>) {
 
 server.listen(PORT, () => {
   console.log(`Clawdbot proxy running on port ${PORT}`);
+  console.log(`[Config] BRAVE_API_KEY: ${BRAVE_API_KEY ? "set" : "MISSING"}`);
+  console.log(`[Config] BASESCAN_API_KEY: ${BASESCAN_API_KEY ? "set" : "MISSING"}`);
+  console.log(`[Config] XAI_API_KEY: ${XAI_API_KEY ? "set" : "MISSING"}`);
 
   // Start ACP agent (non-blocking — runs in background)
   startAcp().catch((err) => {

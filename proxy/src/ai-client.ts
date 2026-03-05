@@ -493,12 +493,18 @@ async function streamVenice(
     );
 
     // X/Twitter search via xAI Grok
-    if (opts?.xaiApiKey && needsXSearch(lastUserMsg.content)) {
+    const hasXKey = !!opts?.xaiApiKey;
+    const xPatternMatch = needsXSearch(lastUserMsg.content);
+    console.log(`[X-Search] Key present: ${hasXKey}, Pattern match: ${xPatternMatch}, Message: "${lastUserMsg.content.slice(0, 80)}"`);
+
+    if (hasXKey && xPatternMatch) {
       fetches.push(
-        searchX(lastUserMsg.content, opts.xaiApiKey)
+        searchX(lastUserMsg.content, opts!.xaiApiKey!)
           .then(r => { xContext = r; })
           .catch(err => console.error("[X-Search] Pre-fetch failed:", err))
       );
+    } else if (!hasXKey) {
+      console.warn("[X-Search] SKIPPED — XAI_API_KEY not configured");
     }
 
     await Promise.allSettled(fetches);
