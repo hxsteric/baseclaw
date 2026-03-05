@@ -519,14 +519,26 @@ async function streamVenice(
     systemPrompt += "\n\nREMINDER: X/Twitter data above is pre-fetched. Never say you cannot access X.com. Present the data directly.";
   }
 
+  // Always strip X.com/twitter.com URLs from user messages — Venice can't scrape X.com
+  // If we have xContext, the data is already in the system prompt. If not, we still
+  // need to strip to prevent Venice from failing on X.com scraping attempts.
+  const hasXUrl = (text: string) => /https?:\/\/(x\.com|twitter\.com)\S*/i.test(text);
+  const stripXUrls = (text: string): string =>
+    text.replace(/https?:\/\/(x\.com|twitter\.com)\S*/gi,
+      xContext ? "[X post — see pre-fetched data above]" : "[X post link removed — X.com blocks automated access]"
+    );
+
   // Format messages — support vision (multipart content) when images present
   const formattedMessages: Array<Record<string, unknown>> = [
     { role: "system", content: systemPrompt },
     ...messages.map((m) => {
+      // Always strip X.com URLs from user messages to prevent Venice scraping failures
+      const msgContent = (m.role === "user" && hasXUrl(m.content)) ? stripXUrls(m.content) : m.content;
+
       if (m.role === "user" && m.images && m.images.length > 0) {
         // Vision format: multipart content array
         const content: Array<Record<string, unknown>> = [
-          { type: "text", text: m.content },
+          { type: "text", text: msgContent },
           ...m.images.map(img => ({
             type: "image_url",
             image_url: { url: `data:${img.mimeType};base64,${img.data}` },
@@ -534,7 +546,7 @@ async function streamVenice(
         ];
         return { role: m.role, content };
       }
-      return { role: m.role, content: m.content };
+      return { role: m.role, content: msgContent };
     }),
   ];
 

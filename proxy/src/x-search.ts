@@ -9,6 +9,9 @@
 // ─── Pattern Detection ───────────────────────────────────────────────
 
 const X_PATTERNS = [
+  // Direct X/Twitter URLs (user pastes a link)
+  /https?:\/\/(x\.com|twitter\.com)\/\w+\/status/i,
+
   // Direct X/Twitter mentions
   /\b(tweet|tweeted|tweeting|tweets)\b/i,
   /\btwitter\b/i,
