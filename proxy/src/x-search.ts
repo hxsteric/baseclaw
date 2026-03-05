@@ -121,26 +121,30 @@ Format your response as a structured list. Do NOT say "I couldn't find" — alwa
     const data = await res.json() as any;
 
     // /v1/responses returns output[] array with message items
+    // Content blocks use type "output_text" (NOT "text") in the Responses API
     let content = "";
     if (data.output && Array.isArray(data.output)) {
       for (const item of data.output) {
         if (item.type === "message" && item.content) {
           for (const block of item.content) {
-            if (block.type === "text") {
+            if (block.type === "output_text" || block.type === "text") {
               content += block.text;
             }
           }
         }
       }
     }
-    // Fallback: try choices format
+    // Fallback: try choices format (chat completions style)
     if (!content && data.choices?.[0]?.message?.content) {
       content = data.choices[0].message.content;
     }
+    // Fallback: try top-level output_text (flat response)
+    if (!content && data.output_text) {
+      content = data.output_text;
+    }
 
     if (!content) {
-      console.error("[X-Search] No content in response. Keys:", Object.keys(data).join(", "));
-      console.error("[X-Search] Response preview:", JSON.stringify(data).slice(0, 500));
+      console.error("[X-Search] No content in response. Full response:", JSON.stringify(data).slice(0, 1000));
       return "";
     }
 

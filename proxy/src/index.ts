@@ -42,14 +42,38 @@ const server = http.createServer(async (req, res) => {
       MANAGED_ANTHROPIC_KEY: process.env.MANAGED_ANTHROPIC_KEY ? "set" : "MISSING",
     }));
   } else if (req.url?.startsWith("/debug/x-search") && req.method === "GET") {
-    // Test xAI X search end-to-end
+    // Test xAI X search end-to-end + show raw API response
     const { needsXSearch, searchX } = await import("./x-search.js");
     const testQuery = "who is talking about VVV on crypto twitter";
     const patternMatch = needsXSearch(testQuery);
     let xResult = "";
     let xError = "";
+    let rawResponse: any = null;
+
     if (XAI_API_KEY && patternMatch) {
       try {
+        // Also make a raw call to see response structure
+        const rawRes = await fetch("https://api.x.ai/v1/responses", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${XAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "grok-4-1-fast-non-reasoning",
+            input: "What are people saying about VVV token on X?",
+            tools: [{ type: "x_search" }],
+            max_tokens: 500,
+            temperature: 0,
+          }),
+        });
+        if (rawRes.ok) {
+          rawResponse = await rawRes.json();
+        } else {
+          rawResponse = { error: rawRes.status, body: await rawRes.text() };
+        }
+
+        // Also test our parser
         xResult = await searchX(testQuery, XAI_API_KEY);
       } catch (err: any) {
         xError = err?.message || String(err);
@@ -61,7 +85,17 @@ const server = http.createServer(async (req, res) => {
       patternMatch,
       keyPresent: !!XAI_API_KEY,
       resultLength: xResult.length,
-      resultPreview: xResult.slice(0, 500),
+      resultPreview: xResult.slice(0, 1000),
+      rawResponseStructure: rawResponse ? {
+        keys: Object.keys(rawResponse),
+        outputTypes: rawResponse.output?.map((item: any) => ({
+          type: item.type,
+          role: item.role,
+          contentTypes: item.content?.map((b: any) => b.type),
+        })),
+        hasOutputText: !!rawResponse.output_text,
+        raw: JSON.stringify(rawResponse).slice(0, 2000),
+      } : null,
       error: xError || null,
     }, null, 2));
   } else if (req.url === "/embeddings" && req.method === "POST") {
