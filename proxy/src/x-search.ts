@@ -84,10 +84,8 @@ export async function searchX(
       },
       body: JSON.stringify({
         model: "grok-4-1-fast-non-reasoning",
-        input: [
-          {
-            role: "system",
-            content: `You are a crypto X/Twitter research specialist. Use the x_search tool to find REAL posts on X about the topic.
+        // Responses API: use "instructions" for system prompt, "input" as string for user query
+        instructions: `You are a crypto X/Twitter research specialist. Use the x_search tool to find REAL posts on X about the topic.
 
 You MUST return:
 1. A list of specific @usernames who posted about this topic, with their approximate follower count if visible
@@ -97,12 +95,7 @@ You MUST return:
 5. Overall sentiment summary: bullish/bearish/neutral and why
 
 Format your response as a structured list. Do NOT say "I couldn't find" — always search and report what you find, even if results are limited. If you find few results, note that activity is low.`,
-          },
-          {
-            role: "user",
-            content: query,
-          },
-        ],
+        input: query,
         tools: [{ type: "x_search" }],
         max_tokens: 2000,
         temperature: 0,
