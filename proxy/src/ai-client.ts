@@ -513,7 +513,11 @@ async function streamVenice(
     if (xContext) console.log(`[X-Search] Injecting X data (${xContext.length} chars)`);
   }
 
-  const systemPrompt = getSystemPrompt() + cryptoContext + xContext;
+  // Build system prompt with any pre-fetched context
+  let systemPrompt = getSystemPrompt() + cryptoContext + xContext;
+  if (xContext) {
+    systemPrompt += "\n\nREMINDER: X/Twitter data above is pre-fetched. Never say you cannot access X.com. Present the data directly.";
+  }
 
   // Format messages — support vision (multipart content) when images present
   const formattedMessages: Array<Record<string, unknown>> = [

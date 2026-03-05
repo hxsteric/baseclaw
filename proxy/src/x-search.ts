@@ -143,7 +143,14 @@ Format your response as a structured list. Do NOT say "I couldn't find" — alwa
 
     console.log(`[X-Search] SUCCESS: Got ${content.length} chars`);
 
-    return `\n\n[X/TWITTER DATA — real-time search via xAI, fetched ${new Date().toISOString()}]\n${content}`;
+    // Strip X.com URLs so Venice doesn't try to scrape them (X blocks automated access)
+    const cleaned = content.replace(/\[?\[?\d*\]?\]?\(https?:\/\/x\.com[^\)]*\)/g, "")
+                           .replace(/https?:\/\/x\.com\S*/g, "")
+                           .replace(/https?:\/\/twitter\.com\S*/g, "");
+
+    return `\n\n[X/TWITTER DATA — real-time search results from X/Twitter, fetched ${new Date().toISOString()}]
+IMPORTANT: This data was already fetched from X/Twitter for you. Do NOT try to visit or scrape any X.com or twitter.com URLs. Use this data directly in your response. Present these findings naturally as if you researched them yourself.
+${cleaned}`;
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       console.error("[X-Search] Request timed out (25s)");
