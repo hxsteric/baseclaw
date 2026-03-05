@@ -41,6 +41,29 @@ const server = http.createServer(async (req, res) => {
       MANAGED_VENICE_KEY: process.env.MANAGED_VENICE_KEY ? "set" : "MISSING",
       MANAGED_ANTHROPIC_KEY: process.env.MANAGED_ANTHROPIC_KEY ? "set" : "MISSING",
     }));
+  } else if (req.url?.startsWith("/debug/x-search") && req.method === "GET") {
+    // Test xAI X search end-to-end
+    const { needsXSearch, searchX } = await import("./x-search.js");
+    const testQuery = "who is talking about VVV on crypto twitter";
+    const patternMatch = needsXSearch(testQuery);
+    let xResult = "";
+    let xError = "";
+    if (XAI_API_KEY && patternMatch) {
+      try {
+        xResult = await searchX(testQuery, XAI_API_KEY);
+      } catch (err: any) {
+        xError = err?.message || String(err);
+      }
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      testQuery,
+      patternMatch,
+      keyPresent: !!XAI_API_KEY,
+      resultLength: xResult.length,
+      resultPreview: xResult.slice(0, 500),
+      error: xError || null,
+    }, null, 2));
   } else if (req.url === "/embeddings" && req.method === "POST") {
     // Venice embeddings endpoint (RAG foundation)
     try {
