@@ -2,23 +2,27 @@
 
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { useChat } from "@/hooks/useChat";
+import type { MoltbookResponseData } from "@/hooks/useChat";
 import { useConfig } from "@/hooks/useConfig";
 import { useAgentStore } from "@/hooks/useAgentStore";
 import { useApp } from "./Providers";
 import { BackButton } from "./BackButton";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { MoltbookPanel } from "./MoltbookPanel";
+import type { MoltbookPanelHandle } from "./MoltbookPanel";
 
 export function ChatInterface() {
   const { auth, activeAgentId, setActiveAgentId, setStep, setConfig } = useApp();
   const { config } = useConfig();
-  const { activeAgent, addAgent, getMessages, saveMessages, updateLastUsed, renameAgent } = useAgentStore();
+  const { activeAgent, addAgent, getMessages, saveMessages, updateLastUsed, renameAgent, updateMoltbook } = useAgentStore();
 
   // Track if this session is saved
   const [isSaved, setIsSaved] = useState(!!activeAgentId);
   const [showNameModal, setShowNameModal] = useState(false);
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [agentName, setAgentName] = useState("");
+  const moltbookPanelRef = useRef<MoltbookPanelHandle>(null);
 
   const initialMessages = useMemo(
     () => (activeAgentId ? getMessages(activeAgentId) : []),
@@ -32,9 +36,17 @@ export function ChatInterface() {
     [activeAgentId, saveMessages]
   );
 
-  const { messages, isConnected, isStreaming, sendMessage } = useChat(config, auth.token, auth.fid, {
+  const onMoltbookResponse = useCallback(
+    (response: MoltbookResponseData) => {
+      moltbookPanelRef.current?.handleResponse(response);
+    },
+    []
+  );
+
+  const { messages, isConnected, isStreaming, sendMessage, sendMoltbookAction } = useChat(config, auth.token, auth.fid, {
     initialMessages,
     onMessagesUpdate,
+    onMoltbookResponse,
   });
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -227,6 +239,23 @@ export function ChatInterface() {
           <ChatMessage key={msg.id} message={msg} />
         ))}
       </div>
+
+      {/* Moltbook social panel — only for saved agents */}
+      {isSaved && activeAgentId && (
+        <MoltbookPanel
+          ref={moltbookPanelRef}
+          agentId={activeAgentId}
+          agentName={activeAgent?.name || "Agent"}
+          moltbook={activeAgent?.moltbook}
+          onUpdateMoltbook={(config) => {
+            if (activeAgentId) updateMoltbook(activeAgentId, config);
+          }}
+          sendMoltbookAction={sendMoltbookAction}
+          lastAssistantMessage={
+            [...messages].reverse().find((m) => m.role === "assistant" && !m.streaming)?.content
+          }
+        />
+      )}
 
       <ChatInput onSend={sendMessage} disabled={!isConnected || isStreaming} />
 

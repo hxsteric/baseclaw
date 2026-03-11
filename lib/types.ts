@@ -61,6 +61,14 @@ export interface AuthState {
 
 export type AppStep = "loading" | "onboarding" | "setup" | "agents" | "chat" | "plans";
 
+export interface MoltbookConfig {
+  registered: boolean;
+  apiKey?: string;
+  claimUrl?: string;
+  claimed: boolean;
+  agentName?: string;
+}
+
 export interface SavedAgent {
   id: string;
   name: string;
@@ -68,12 +76,13 @@ export interface SavedAgent {
   enabled: boolean;
   createdAt: number;
   lastUsedAt: number;
+  moltbook?: MoltbookConfig;
 }
 
 export type AgentMessages = Record<string, ChatMessage[]>;
 
 export interface ProxyMessage {
-  action: "send" | "history" | "config";
+  action: "send" | "history" | "config" | "moltbook";
   message?: string;
   model?: string;
   apiKey?: string;
@@ -82,15 +91,33 @@ export interface ProxyMessage {
   fid?: number;
   token?: string;
   limit?: number;
+  // Moltbook actions
+  subaction?: string;
+  moltbookApiKey?: string;
+  name?: string;
+  description?: string;
+  submolt?: string;
+  title?: string;
+  content?: string;
+  postId?: string;
+  parentId?: string;
+  targetName?: string;
+  query?: string;
+  sort?: string;
+  subject?: string;
+  body?: string;
 }
 
 export interface ProxyResponse {
-  type: "connected" | "delta" | "final" | "history" | "error";
+  type: "connected" | "delta" | "final" | "history" | "error" | "moltbook";
   fid?: number;
   text?: string;
   message?: string;
   messages?: ChatMessage[];
   runId?: string;
+  // Moltbook response
+  subaction?: string;
+  data?: unknown;
 }
 
 export const SUPPORTED_MODELS: Record<string, { label: string; provider: string; id: string }[]> = {

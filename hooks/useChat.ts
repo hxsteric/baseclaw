@@ -5,9 +5,24 @@ import { nanoid } from "nanoid";
 import type { ChatMessage, UserConfig, ImageAttachment } from "@/lib/types";
 import { WS_PROXY_URL } from "@/lib/constants";
 
+export interface MoltbookAction {
+  subaction: string;
+  moltbookApiKey?: string;
+  [key: string]: unknown;
+}
+
+export interface MoltbookResponseData {
+  subaction: string;
+  success: boolean;
+  data?: unknown;
+  error?: string;
+  hint?: string;
+}
+
 interface UseChatOptions {
   initialMessages?: ChatMessage[];
   onMessagesUpdate?: (messages: ChatMessage[]) => void;
+  onMoltbookResponse?: (response: MoltbookResponseData) => void;
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -139,6 +154,10 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
             }
             break;
 
+          case "moltbook":
+            options?.onMoltbookResponse?.(data as MoltbookResponseData);
+            break;
+
           case "error":
             setIsStreaming(false);
             setMessages((prev) => [
@@ -241,6 +260,14 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
     [isStreaming]
   );
 
+  const sendMoltbookAction = useCallback(
+    (action: MoltbookAction) => {
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+      wsRef.current.send(JSON.stringify({ action: "moltbook", ...action }));
+    },
+    []
+  );
+
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
@@ -250,6 +277,7 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
     isConnected,
     isStreaming,
     sendMessage,
+    sendMoltbookAction,
     clearMessages,
   };
 }

@@ -20,6 +20,7 @@ import {
 } from "./ai-router.js";
 import { startAcp, getAcpStatus } from "./acp-handler.js";
 import { generateEmbedding } from "./embeddings.js";
+import * as moltbook from "./moltbook.js";
 
 const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
@@ -360,6 +361,115 @@ wss.on("connection", (ws, req) => {
         case "history": {
           const messages = getSessionHistory(sessionId);
           send(ws, { type: "history", messages });
+          break;
+        }
+
+        case "moltbook": {
+          const mbKey = data.moltbookApiKey as string | undefined;
+          const sub = data.subaction as string;
+
+          try {
+            let result: moltbook.MoltbookResponse;
+
+            switch (sub) {
+              case "register":
+                result = await moltbook.registerAgent(
+                  data.name as string || "BaseClaw Agent",
+                  data.description as string || "Crypto & web3 AI research agent built on Base"
+                );
+                break;
+
+              case "home":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.getHome(mbKey);
+                break;
+
+              case "post":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.createPost(
+                  mbKey,
+                  data.submolt as string || "general",
+                  data.title as string || "BaseClaw Research",
+                  data.content as string || "",
+                  "text"
+                );
+                break;
+
+              case "comment":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.createComment(
+                  mbKey,
+                  data.postId as string,
+                  data.content as string,
+                  data.parentId as string | undefined
+                );
+                break;
+
+              case "upvote":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.upvotePost(mbKey, data.postId as string);
+                break;
+
+              case "downvote":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.downvotePost(mbKey, data.postId as string);
+                break;
+
+              case "follow":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.followAgent(mbKey, data.targetName as string);
+                break;
+
+              case "unfollow":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.unfollowAgent(mbKey, data.targetName as string);
+                break;
+
+              case "search":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.searchPosts(mbKey, data.query as string);
+                break;
+
+              case "feed":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.getFeed(
+                  mbKey,
+                  (data.sort as "hot" | "new" | "top" | "rising") || "hot"
+                );
+                break;
+
+              case "dm":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.sendDM(
+                  mbKey,
+                  data.targetName as string,
+                  data.subject as string || "",
+                  data.body as string || ""
+                );
+                break;
+
+              case "profile":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = data.targetName
+                  ? await moltbook.getAgentProfile(mbKey, data.targetName as string)
+                  : await moltbook.getMe(mbKey);
+                break;
+
+              case "notifications":
+                if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
+                result = await moltbook.getNotifications(mbKey);
+                break;
+
+              default:
+                send(ws, { type: "error", message: `Unknown moltbook subaction: ${sub}` });
+                return;
+            }
+
+            send(ws, { type: "moltbook", subaction: sub, ...result });
+          } catch (err) {
+            console.error("[Moltbook] Error:", err);
+            send(ws, { type: "error", message: `Moltbook error: ${err instanceof Error ? err.message : String(err)}` });
+          }
           break;
         }
 

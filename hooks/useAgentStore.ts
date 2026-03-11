@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { nanoid } from "nanoid";
-import type { SavedAgent, ChatMessage, UserConfig } from "@/lib/types";
+import type { SavedAgent, ChatMessage, UserConfig, MoltbookConfig } from "@/lib/types";
 import { useApp } from "@/components/Providers";
 
 const AGENTS_KEY = "baseclaw_agents";
@@ -133,6 +133,15 @@ export function useAgentStore() {
     persistAllMessages(all);
   }, []);
 
+  const updateMoltbook = useCallback((id: string, moltbookConfig: MoltbookConfig) => {
+    const existing = loadAgents();
+    const updated = existing.map((a) =>
+      a.id === id ? { ...a, moltbook: moltbookConfig } : a
+    );
+    persistAgents(updated);
+    setAgents(updated);
+  }, []);
+
   const hasAgents = useCallback((): boolean => {
     return loadAgents().length > 0;
   }, []);
@@ -148,6 +157,7 @@ export function useAgentStore() {
     toggleAgent,
     updateLastUsed,
     renameAgent,
+    updateMoltbook,
     getMessages,
     saveMessages,
     hasAgents,
