@@ -210,6 +210,16 @@ async function moltbookFetch<T>(
     const raw = await res.json() as any;
 
     if (!res.ok) {
+      // Rate limit — friendly message
+      if (res.status === 429) {
+        const retryAfter = res.headers.get("Retry-After");
+        const waitMsg = retryAfter ? ` Wait ${retryAfter} seconds.` : " Wait a minute and try again.";
+        return {
+          success: false,
+          error: `Rate limited — too many requests.${waitMsg}`,
+          hint: raw.hint || raw.detail,
+        };
+      }
       return {
         success: false,
         error: raw.error || raw.detail || `HTTP ${res.status}`,

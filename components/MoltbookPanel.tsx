@@ -130,7 +130,15 @@ export const MoltbookPanel = forwardRef<MoltbookPanelHandle, MoltbookPanelProps>
             errorMsg.toLowerCase().includes("already") ||
             errorMsg.toLowerCase().includes("taken");
 
-          if (isConflict) {
+          const isRateLimit =
+            errorMsg.includes("429") ||
+            errorMsg.toLowerCase().includes("rate limit") ||
+            errorMsg.toLowerCase().includes("too many");
+
+          if (isRateLimit) {
+            setNameError("Too many attempts. Please wait a minute and try again.");
+            setStatusMessage("");
+          } else if (isConflict) {
             setNameError(response.hint || "This name is already taken. Try a different one.");
             setStatusMessage("");
           } else {
