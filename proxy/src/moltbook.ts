@@ -206,17 +206,37 @@ async function moltbookFetch<T>(
       headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
     });
 
-    const data = await res.json() as MoltbookResponse<T>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = await res.json() as any;
 
     if (!res.ok) {
       return {
         success: false,
-        error: data.error || `HTTP ${res.status}`,
-        hint: data.hint,
+        error: raw.error || raw.detail || `HTTP ${res.status}`,
+        hint: raw.hint,
       };
     }
 
-    return data;
+    // Normalize response: Moltbook API may return different shapes depending on endpoint.
+    // Some return { success: true, data: {...} } and some return { agent: {...} } or { posts: [...] }.
+    // We normalize everything into our MoltbookResponse<T> shape.
+    if (raw.success !== undefined) {
+      // Already in our expected format
+      return raw as MoltbookResponse<T>;
+    }
+
+    // Registration returns { agent: { api_key, claim_url, ... }, important: "..." }
+    if (raw.agent && typeof raw.agent === "object") {
+      return { success: true, data: raw.agent as T };
+    }
+
+    // Feed/list endpoints may return { posts: [...] } or { data: [...] }
+    if (raw.posts || raw.data || raw.notifications || raw.submolts || raw.messages) {
+      return { success: true, data: raw as T };
+    }
+
+    // Fallback: wrap the entire response as data
+    return { success: true, data: raw as T };
   } catch (err) {
     return {
       success: false,
