@@ -197,6 +197,8 @@ async function moltbookFetch<T>(
 ): Promise<MoltbookResponse<T>> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Accept": "application/json",
+    "User-Agent": "BaseClaw/1.0 (crypto research agent; +https://baseclaw.com)",
     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
   };
 
@@ -206,32 +208,48 @@ async function moltbookFetch<T>(
       headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
     });
 
+    // ── Handle errors BEFORE parsing JSON ──
+    // (429 responses may return HTML or plain text, not JSON)
+    if (!res.ok) {
+      let errorDetail = `HTTP ${res.status}`;
+      let hint: string | undefined;
+
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const errBody = await res.json() as any;
+        errorDetail = errBody.error || errBody.detail || errBody.message || errorDetail;
+        hint = errBody.hint;
+      } catch {
+        // Response wasn't JSON — try plain text
+        try {
+          const text = await res.text();
+          if (text && text.length < 200) errorDetail = text;
+        } catch { /* ignore */ }
+      }
+
+      if (res.status === 429) {
+        const retryAfter = res.headers.get("Retry-After");
+        const remaining = res.headers.get("X-RateLimit-Remaining");
+        const reset = res.headers.get("X-RateLimit-Reset");
+        console.log(`[Moltbook] 429 Rate Limited. Retry-After: ${retryAfter}, Remaining: ${remaining}, Reset: ${reset}, Body: ${errorDetail}`);
+        const waitMsg = retryAfter ? ` Wait ${retryAfter}s.` : "";
+        return { success: false, error: `Rate limited.${waitMsg} ${errorDetail}`.trim(), hint };
+      }
+
+      if (res.status === 409) {
+        console.log(`[Moltbook] 409 Conflict: ${errorDetail}`);
+      }
+
+      return { success: false, error: errorDetail, hint };
+    }
+
+    // ── Parse successful response ──
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = await res.json() as any;
 
-    if (!res.ok) {
-      // Rate limit — friendly message
-      if (res.status === 429) {
-        const retryAfter = res.headers.get("Retry-After");
-        const waitMsg = retryAfter ? ` Wait ${retryAfter} seconds.` : " Wait a minute and try again.";
-        return {
-          success: false,
-          error: `Rate limited — too many requests.${waitMsg}`,
-          hint: raw.hint || raw.detail,
-        };
-      }
-      return {
-        success: false,
-        error: raw.error || raw.detail || `HTTP ${res.status}`,
-        hint: raw.hint,
-      };
-    }
-
     // Normalize response: Moltbook API may return different shapes depending on endpoint.
     // Some return { success: true, data: {...} } and some return { agent: {...} } or { posts: [...] }.
-    // We normalize everything into our MoltbookResponse<T> shape.
     if (raw.success !== undefined) {
-      // Already in our expected format
       return raw as MoltbookResponse<T>;
     }
 
@@ -248,6 +266,7 @@ async function moltbookFetch<T>(
     // Fallback: wrap the entire response as data
     return { success: true, data: raw as T };
   } catch (err) {
+    console.error("[Moltbook] Fetch error:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : String(err),
@@ -261,10 +280,28 @@ export async function registerAgent(
   name: string,
   description: string
 ): Promise<MoltbookResponse<RegisterResult>> {
-  return moltbookFetch<RegisterResult>("/agents/register", undefined, {
-    method: "POST",
-    body: JSON.stringify({ name, description }),
-  });
+  console.log(`[Moltbook] Registering agent: "${name}"`);
+
+  const attempt = () =>
+    moltbookFetch<RegisterResult>("/agents/register", undefined, {
+      method: "POST",
+      body: JSON.stringify({ name, description }),
+    });
+
+  // First attempt
+  const first = await attempt();
+  console.log(`[Moltbook] Register attempt 1 result:`, JSON.stringify(first));
+
+  // If rate limited, wait and retry once
+  if (!first.success && first.error?.toLowerCase().includes("rate limit")) {
+    console.log("[Moltbook] Rate limited — waiting 5s then retrying...");
+    await new Promise((r) => setTimeout(r, 5000));
+    const second = await attempt();
+    console.log(`[Moltbook] Register attempt 2 result:`, JSON.stringify(second));
+    return second;
+  }
+
+  return first;
 }
 
 // ─── Agent Profile ──────────────────────────────────────────────────

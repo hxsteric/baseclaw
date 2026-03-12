@@ -372,12 +372,14 @@ wss.on("connection", (ws, req) => {
             let result: moltbook.MoltbookResponse;
 
             switch (sub) {
-              case "register":
-                result = await moltbook.registerAgent(
-                  data.name as string || "BaseClaw Agent",
-                  data.description as string || "Crypto & web3 AI research agent built on Base"
-                );
+              case "register": {
+                const regName = data.name as string || "BaseClaw Agent";
+                const regDesc = data.description as string || "Crypto & web3 AI research agent built on Base";
+                console.log(`[Moltbook WS] Register request: name="${regName}"`);
+                result = await moltbook.registerAgent(regName, regDesc);
+                console.log(`[Moltbook WS] Register response:`, JSON.stringify(result).slice(0, 500));
                 break;
+              }
 
               case "home":
                 if (!mbKey) { send(ws, { type: "error", message: "Moltbook API key required" }); return; }
