@@ -21,6 +21,7 @@ import {
 import { startAcp, getAcpStatus } from "./acp-handler.js";
 import { generateEmbedding } from "./embeddings.js";
 import * as moltbook from "./moltbook.js";
+import { getHermesBridge, isHermesAvailable } from "./hermes-bridge.js";
 
 const PORT = Number(process.env.PORT) || Number(process.env.PROXY_PORT) || 3002;
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001").split(",");
@@ -307,54 +308,120 @@ wss.on("connection", (ws, req) => {
             }
           }
 
-          // Stream AI response
-          await streamCompletion(
-            actualProvider,
-            actualModel,
-            actualKey,
-            session.messages,
-            {
-              onDelta: (text) => {
-                send(ws, { type: "delta", runId, text, ...(modelRole ? { modelRole } : {}) });
-              },
-              onFinal: (fullText) => {
-                const assistantMsg: Message = {
-                  id: runId,
-                  role: "assistant",
-                  content: fullText,
-                  timestamp: Date.now(),
-                };
-                addMessage(sessionId, assistantMsg);
-                send(ws, {
-                  type: "final",
-                  runId,
-                  message: fullText,
+          // ─── Route through Hermes Agent if available ───
+          if (isHermesAvailable()) {
+            try {
+              const bridge = getHermesBridge();
+              await bridge.chat(
+                sessionId,
+                message,
+                {
+                  provider: actualProvider,
                   model: actualModel,
-                  ...(modelRole ? { modelRole } : {}),
-                });
+                  apiKey: actualKey,
+                  toolsets: ["web"],
+                  maxIterations: 30,
+                },
+                {
+                  onDelta: (text) => {
+                    send(ws, { type: "delta", runId, text, ...(modelRole ? { modelRole } : {}) });
+                  },
+                  onToolStart: (toolName, input) => {
+                    send(ws, { type: "delta", runId, text: `\n\n🔧 **${toolName}**: ${input}\n` });
+                  },
+                  onToolEnd: (toolName, output) => {
+                    send(ws, { type: "delta", runId, text: `\n📊 Result received\n\n` });
+                  },
+                  onFinal: (fullText, _apiCalls, _completed) => {
+                    const assistantMsg: Message = {
+                      id: runId,
+                      role: "assistant",
+                      content: fullText,
+                      timestamp: Date.now(),
+                    };
+                    addMessage(sessionId, assistantMsg);
+                    send(ws, {
+                      type: "final",
+                      runId,
+                      message: fullText,
+                      model: actualModel,
+                      ...(modelRole ? { modelRole } : {}),
+                    });
 
-                // Track usage for managed sessions
-                if (session.keyMode === "managed" && session.fid) {
-                  const inputTokens = Math.ceil(message.length / 4);
-                  const outputTokens = Math.ceil(fullText.length / 4);
-                  trackUsage(session.fid, inputTokens, outputTokens, actualModel).catch((err) => {
-                    console.error("Usage tracking error:", err);
-                  });
-                  const metered = isMetered(actualModel);
-                  console.log(`[Router] Usage tracked: fid=${session.fid} model=${actualModel} metered=${metered} in=${inputTokens} out=${outputTokens}`);
+                    // Track usage for managed sessions
+                    if (session.keyMode === "managed" && session.fid) {
+                      const inputTokens = Math.ceil(message.length / 4);
+                      const outputTokens = Math.ceil(fullText.length / 4);
+                      trackUsage(session.fid, inputTokens, outputTokens, actualModel).catch((err) => {
+                        console.error("Usage tracking error:", err);
+                      });
+                    }
+                  },
+                  onError: (error) => {
+                    send(ws, { type: "error", message: `Hermes error: ${error}` });
+                  },
                 }
-              },
-              onError: (error) => {
-                send(ws, { type: "error", message: error });
-              },
-            },
-            BRAVE_API_KEY || undefined,
-            {
-              basescanApiKey: BASESCAN_API_KEY || undefined,
-              xaiApiKey: XAI_API_KEY || undefined,
-              hasImages,
+              );
+            } catch (err) {
+              // Hermes failed — fall back to basic chat
+              console.error("[Hermes] Chat error, falling back:", err);
+              send(ws, { type: "delta", runId, text: "(Hermes unavailable, using basic mode)\n\n" });
+              await basicStreamCompletion();
             }
-          );
+          } else {
+            await basicStreamCompletion();
+          }
+
+          // ─── Fallback: basic stream completion (no Hermes) ───
+          async function basicStreamCompletion() {
+            await streamCompletion(
+              actualProvider,
+              actualModel,
+              actualKey,
+              session!.messages,
+              {
+                onDelta: (text) => {
+                  send(ws, { type: "delta", runId, text, ...(modelRole ? { modelRole } : {}) });
+                },
+                onFinal: (fullText) => {
+                  const assistantMsg: Message = {
+                    id: runId,
+                    role: "assistant",
+                    content: fullText,
+                    timestamp: Date.now(),
+                  };
+                  addMessage(sessionId, assistantMsg);
+                  send(ws, {
+                    type: "final",
+                    runId,
+                    message: fullText,
+                    model: actualModel,
+                    ...(modelRole ? { modelRole } : {}),
+                  });
+
+                  // Track usage for managed sessions
+                  if (session!.keyMode === "managed" && session!.fid) {
+                    const inputTokens = Math.ceil(message.length / 4);
+                    const outputTokens = Math.ceil(fullText.length / 4);
+                    trackUsage(session!.fid, inputTokens, outputTokens, actualModel).catch((err) => {
+                      console.error("Usage tracking error:", err);
+                    });
+                    const metered = isMetered(actualModel);
+                    console.log(`[Router] Usage tracked: fid=${session!.fid} model=${actualModel} metered=${metered} in=${inputTokens} out=${outputTokens}`);
+                  }
+                },
+                onError: (error) => {
+                  send(ws, { type: "error", message: error });
+                },
+              },
+              BRAVE_API_KEY || undefined,
+              {
+                basescanApiKey: BASESCAN_API_KEY || undefined,
+                xaiApiKey: XAI_API_KEY || undefined,
+                hasImages,
+              }
+            );
+          }
           break;
         }
 
@@ -509,6 +576,21 @@ server.listen(PORT, () => {
   console.log(`[Config] BRAVE_API_KEY: ${BRAVE_API_KEY ? "set" : "MISSING"}`);
   console.log(`[Config] BASESCAN_API_KEY: ${BASESCAN_API_KEY ? "set" : "MISSING"}`);
   console.log(`[Config] XAI_API_KEY: ${XAI_API_KEY ? "set" : "MISSING"}`);
+  console.log(`[Hermes] Available: ${isHermesAvailable() ? "YES — all agents use Hermes" : "NO — falling back to basic chat"}`);
+
+  // Initialize Hermes bridge if available
+  if (isHermesAvailable()) {
+    try {
+      const bridge = getHermesBridge();
+      bridge.waitReady().then(() => {
+        console.log("[Hermes] Bridge initialized and ready");
+      }).catch((err) => {
+        console.error("[Hermes] Bridge init failed:", err);
+      });
+    } catch (err) {
+      console.error("[Hermes] Failed to start bridge:", err);
+    }
+  }
 
   // Start ACP agent (non-blocking — runs in background)
   startAcp().catch((err) => {
