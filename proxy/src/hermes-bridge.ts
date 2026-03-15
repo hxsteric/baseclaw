@@ -8,6 +8,7 @@
 import { ChildProcess, spawn } from "child_process";
 import { createInterface, Interface } from "readline";
 import path from "path";
+import fs from "fs";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -314,12 +315,10 @@ export function isHermesAvailable(): boolean {
   const hermesPath = process.env.HERMES_PATH || "/opt/hermes";
   const checkPath = path.join(hermesPath, "run_agent.py");
   try {
-    const fs = require("fs");
     const dirExists = fs.existsSync(hermesPath);
     const fileExists = fs.existsSync(checkPath);
     console.log(`[Hermes] Check: HERMES_PATH=${hermesPath}, dir exists=${dirExists}, run_agent.py exists=${fileExists}`);
     if (dirExists && !fileExists) {
-      // List what's actually in the directory for debugging
       try {
         const contents = fs.readdirSync(hermesPath).slice(0, 20);
         console.log(`[Hermes] Directory contents: ${contents.join(", ")}`);

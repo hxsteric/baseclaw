@@ -45,6 +45,13 @@ export async function startAcp(): Promise<void> {
     return;
   }
 
+  // Validate ACP_ENTITY_KEY_ID is numeric (required by the SDK for BigInt conversion)
+  if (ACP_ENTITY_KEY_ID && !/^\d+$/.test(ACP_ENTITY_KEY_ID)) {
+    console.error(`[ACP] Skipping — ACP_ENTITY_KEY_ID must be a numeric value, got: "${ACP_ENTITY_KEY_ID.slice(0, 20)}..."`);
+    console.error("[ACP] Get your numeric entity key ID from the Virtuals Protocol dashboard");
+    return;
+  }
+
   try {
     // Dynamic import — the SDK may not be installed in all environments
     const acpModule: any = await import("@virtuals-protocol/acp-node");
