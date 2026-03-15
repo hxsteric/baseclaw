@@ -25,6 +25,7 @@ import sys
 import os
 import json
 import traceback
+from pathlib import Path
 
 # Add Hermes Agent to path
 HERMES_PATH = os.environ.get("HERMES_PATH", "/opt/hermes")
@@ -114,8 +115,8 @@ def get_or_create_agent(session_id, params):
         )
 
     if _session_db is None:
-        db_path = os.environ.get("HERMES_DB_PATH", os.path.expanduser("~/.hermes/state.db"))
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        db_path = Path(os.environ.get("HERMES_DB_PATH", os.path.expanduser("~/.hermes/state.db")))
+        db_path.parent.mkdir(parents=True, exist_ok=True)
         _session_db = SessionDB(db_path)
 
     provider_config = resolve_provider_config(params)
