@@ -45,13 +45,10 @@ export async function startAcp(): Promise<void> {
     return;
   }
 
-  // If entity key ID is non-numeric, skip it (pass undefined) — SDK needs BigInt
-  const entityKeyId = ACP_ENTITY_KEY_ID && /^\d+$/.test(ACP_ENTITY_KEY_ID)
-    ? ACP_ENTITY_KEY_ID
-    : undefined;
-
-  if (ACP_ENTITY_KEY_ID && !entityKeyId) {
-    console.warn(`[ACP] ACP_ENTITY_KEY_ID is non-numeric ("${ACP_ENTITY_KEY_ID.slice(0, 10)}..."), proceeding without it`);
+  // SDK requires a numeric entity key ID for BigInt conversion — skip ACP if missing/invalid
+  if (!ACP_ENTITY_KEY_ID || !/^\d+$/.test(ACP_ENTITY_KEY_ID)) {
+    console.log(`[ACP] Skipping — ACP_ENTITY_KEY_ID must be a numeric value from Virtuals Protocol dashboard`);
+    return;
   }
 
   try {
@@ -69,7 +66,7 @@ export async function startAcp(): Promise<void> {
 
     const contractClient = await AcpContractClientV2.build(
       ACP_WALLET_PRIVATE_KEY,
-      entityKeyId,
+      ACP_ENTITY_KEY_ID,
       ACP_AGENT_WALLET_ADDRESS,
       ACP_RPC_URL || undefined,
     );
