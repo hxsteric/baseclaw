@@ -14,6 +14,29 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ─── Stability Constants ─────────────────────────────────────────────
+
+const READY_TIMEOUT_MS = 10_000;          // 10s for Python to send "ready"
+const CHAT_TIMEOUT_MS = 120_000;          // 120s default per chat request
+const HEARTBEAT_INTERVAL_MS = 15_000;     // 15s between pings
+const HEARTBEAT_TIMEOUT_MS = 5_000;       // 5s to receive pong
+const MAX_RESTART_ATTEMPTS = 5;
+const BASE_RESTART_DELAY_MS = 1_000;      // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+
+// ─── Timeout Utility ─────────────────────────────────────────────────
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[Hermes] Timeout: ${label} exceeded ${ms}ms`));
+    }, ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
 // ─── Types ──────────────────────────────────────────────────────────
 
 export interface HermesConfig {
@@ -47,6 +70,7 @@ interface BridgeMessage {
   iteration?: number;
   tools?: string[];
   config?: Record<string, unknown>;
+  ts?: number;
 }
 
 // ─── Bridge Class ───────────────────────────────────────────────────
@@ -60,6 +84,12 @@ export class HermesBridge {
   private readyPromise: Promise<void>;
   private readyResolve!: () => void;
   private hermesPath: string;
+
+  // Stability fields
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private lastPongTime = 0;
+  private restartAttempts = 0;
+  private intentionalClose = false;
 
   constructor() {
     // Hermes is installed at /opt/hermes in Docker, or use env var
@@ -102,18 +132,34 @@ export class HermesBridge {
       console.error(`[Hermes stderr] ${data.toString().trim()}`);
     });
 
-    // Handle exit
+    // Handle exit — auto-restart with backoff
     this.process.on("exit", (code: number | null) => {
       console.log(`[Hermes] Process exited with code ${code}`);
       this.ready = false;
       this.process = null;
       this.readline = null;
+      this.stopHeartbeat();
 
       // Reject all pending requests
-      for (const [id, callbacks] of this.pendingRequests) {
+      for (const [_id, callbacks] of this.pendingRequests) {
         callbacks.onError?.(`Hermes process exited unexpectedly (code ${code})`);
       }
       this.pendingRequests.clear();
+
+      // Auto-restart with exponential backoff (unless intentionally closed)
+      if (!this.intentionalClose && this.restartAttempts < MAX_RESTART_ATTEMPTS) {
+        const delay = BASE_RESTART_DELAY_MS * Math.pow(2, this.restartAttempts);
+        this.restartAttempts++;
+        console.log(`[Hermes] Auto-restart attempt ${this.restartAttempts}/${MAX_RESTART_ATTEMPTS} in ${delay}ms`);
+        setTimeout(() => {
+          this.readyPromise = new Promise((resolve) => {
+            this.readyResolve = resolve;
+          });
+          this.spawn();
+        }, delay);
+      } else if (this.restartAttempts >= MAX_RESTART_ATTEMPTS) {
+        console.error(`[Hermes] Max restart attempts (${MAX_RESTART_ATTEMPTS}) reached. Bridge is down — falling back to basic chat.`);
+      }
     });
 
     this.process.on("error", (err: Error) => {
@@ -134,7 +180,15 @@ export class HermesBridge {
     if (msg.type === "ready") {
       console.log("[Hermes] Bridge is ready");
       this.ready = true;
+      this.restartAttempts = 0; // Reset backoff on successful startup
       this.readyResolve();
+      this.startHeartbeat();
+      return;
+    }
+
+    // Handle heartbeat pong
+    if (msg.type === "pong") {
+      this.lastPongTime = Date.now();
       return;
     }
 
@@ -192,16 +246,52 @@ export class HermesBridge {
     return id;
   }
 
+  // ─── Heartbeat ──────────────────────────────────────────────────────
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.lastPongTime = Date.now();
+
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.process?.stdin?.writable) {
+        this.stopHeartbeat();
+        return;
+      }
+
+      this.send("ping", { ts: Date.now() });
+
+      // Check if pong came back within timeout
+      setTimeout(() => {
+        const elapsed = Date.now() - this.lastPongTime;
+        if (elapsed > HEARTBEAT_INTERVAL_MS + HEARTBEAT_TIMEOUT_MS) {
+          console.error(`[Hermes] Heartbeat timeout (${elapsed}ms since last pong). Killing process.`);
+          this.stopHeartbeat();
+          this.process?.kill();
+          // Exit handler will trigger auto-restart
+        }
+      }, HEARTBEAT_TIMEOUT_MS);
+    }, HEARTBEAT_INTERVAL_MS);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  // ─── Public API ─────────────────────────────────────────────────────
+
   /**
-   * Wait for the bridge process to be ready.
+   * Wait for the bridge process to be ready (with 10s timeout).
    */
   async waitReady(): Promise<void> {
     if (this.ready) return;
-    await this.readyPromise;
+    await withTimeout(this.readyPromise, READY_TIMEOUT_MS, "waitReady");
   }
 
   /**
-   * Send a message to the Hermes Agent and receive streaming responses.
+   * Send a message to the Hermes Agent and receive streaming responses (with 120s timeout).
    */
   async chat(
     sessionId: string,
@@ -221,8 +311,8 @@ export class HermesBridge {
       max_iterations: config.maxIterations || 30,
     });
 
-    // Register callbacks for this request
-    return new Promise<void>((resolve, reject) => {
+    // Register callbacks for this request, wrapped with resolve/reject
+    const chatPromise = new Promise<void>((resolve, reject) => {
       const wrappedCallbacks: HermesCallbacks = {
         ...callbacks,
         onFinal: (text, apiCalls, completed) => {
@@ -236,6 +326,14 @@ export class HermesBridge {
       };
       this.pendingRequests.set(id, wrappedCallbacks);
     });
+
+    try {
+      await withTimeout(chatPromise, CHAT_TIMEOUT_MS, `chat(id=${id})`);
+    } catch (err) {
+      // Clean up pending request on timeout
+      this.pendingRequests.delete(id);
+      throw err;
+    }
   }
 
   /**
@@ -261,20 +359,39 @@ export class HermesBridge {
   }
 
   /**
+   * Get health status for diagnostics.
+   */
+  getHealthStatus(): { ready: boolean; pid: number | null; restartAttempts: number; lastPongMs: number } {
+    return {
+      ready: this.ready,
+      pid: this.process?.pid ?? null,
+      restartAttempts: this.restartAttempts,
+      lastPongMs: this.lastPongTime ? Date.now() - this.lastPongTime : -1,
+    };
+  }
+
+  /**
    * Restart the bridge if it crashed.
    */
   restart(): void {
+    this.intentionalClose = true;
     this.close();
-    this.readyPromise = new Promise((resolve) => {
-      this.readyResolve = resolve;
-    });
-    this.spawn();
+    setTimeout(() => {
+      this.intentionalClose = false;
+      this.restartAttempts = 0; // Manual restart resets the counter
+      this.readyPromise = new Promise((resolve) => {
+        this.readyResolve = resolve;
+      });
+      this.spawn();
+    }, 500);
   }
 
   /**
    * Gracefully shut down the bridge.
    */
   close(): void {
+    this.intentionalClose = true;
+    this.stopHeartbeat();
     if (this.process) {
       try {
         this.send("shutdown", {});

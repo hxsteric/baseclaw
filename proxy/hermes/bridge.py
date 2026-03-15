@@ -10,7 +10,8 @@ Protocol:
   Input (stdin):  One JSON object per line
     {"id": 1, "method": "chat", "params": {"message": "...", "session_id": "...", "provider": "...", "model": "...", "api_key": "..."}}
     {"id": 2, "method": "configure", "params": {"provider": "...", "model": "...", "api_key": "..."}}
-    {"id": 3, "method": "shutdown", "params": {}}
+    {"id": 3, "method": "ping", "params": {"ts": 1234567890}}
+    {"id": 4, "method": "shutdown", "params": {}}
 
   Output (stdout): One JSON object per line
     {"id": 1, "type": "delta", "text": "partial response..."}
@@ -19,18 +20,24 @@ Protocol:
     {"id": 1, "type": "thinking", "text": "reasoning..."}
     {"id": 1, "type": "final", "text": "complete response", "api_calls": 3, "completed": true}
     {"id": 1, "type": "error", "error": "error message"}
+    {"id": 1, "type": "pong", "ts": 1234567890}
 """
 
 import sys
 import os
 import json
 import traceback
+import threading
+import signal
 from pathlib import Path
 
 # Add Hermes Agent to path
 HERMES_PATH = os.environ.get("HERMES_PATH", "/opt/hermes")
 if os.path.isdir(HERMES_PATH):
     sys.path.insert(0, HERMES_PATH)
+
+# Chat timeout (10s less than Node-side 120s, so Python sends clean error first)
+CHAT_TIMEOUT_S = int(os.environ.get("HERMES_CHAT_TIMEOUT", "110"))
 
 # Globals
 _agent_cache = {}  # session_id -> AIAgent instance
@@ -147,7 +154,7 @@ def get_or_create_agent(session_id, params):
 
 
 def handle_chat(request_id, params):
-    """Run a conversation with the Hermes Agent."""
+    """Run a conversation with the Hermes Agent (with timeout)."""
     message = params.get("message", "")
     session_id = params.get("session_id", "default")
 
@@ -187,12 +194,36 @@ def handle_chat(request_id, params):
             except Exception:
                 pass  # First message — no history yet
 
-        result = agent.run_conversation(
-            user_message=message,
-            conversation_history=history,
-            stream_callback=on_delta,
-        )
+        # Run conversation in a thread with timeout to prevent hangs
+        result_container = {}
+        error_container = {}
 
+        def _run():
+            try:
+                result_container["value"] = agent.run_conversation(
+                    user_message=message,
+                    conversation_history=history,
+                    stream_callback=on_delta,
+                )
+            except Exception as e:
+                error_container["value"] = e
+
+        worker = threading.Thread(target=_run, daemon=True)
+        worker.start()
+        worker.join(timeout=CHAT_TIMEOUT_S)
+
+        if worker.is_alive():
+            # Thread timed out — agent is stuck
+            emit(request_id, "error",
+                 error=f"Agent timed out after {CHAT_TIMEOUT_S}s")
+            # Evict agent from cache since it may be in a bad state
+            _agent_cache.pop(session_id, None)
+            return
+
+        if "value" in error_container:
+            raise error_container["value"]
+
+        result = result_container.get("value", {})
         final_text = result.get("final_response", "")
         emit(
             request_id,
@@ -216,6 +247,11 @@ def handle_configure(request_id, params):
     emit(request_id, "configured", config=_default_config)
 
 
+def handle_ping(request_id, params):
+    """Respond to heartbeat ping with a pong."""
+    emit(request_id, "pong", ts=params.get("ts", 0))
+
+
 def handle_shutdown(request_id, _params):
     """Clean shutdown."""
     emit(request_id, "shutdown", text="Bridge shutting down")
@@ -224,11 +260,35 @@ def handle_shutdown(request_id, _params):
 
 def main():
     """Main loop: read JSON commands from stdin, dispatch to handlers."""
+
+    # Graceful shutdown on SIGTERM/SIGINT
+    def _signal_handler(signum, _frame):
+        signame = signal.Signals(signum).name
+        print(f"[Bridge] Received {signame}, shutting down",
+              file=sys.stderr, flush=True)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _signal_handler)
+    signal.signal(signal.SIGINT, _signal_handler)
+
+    # Health logger — prints status to stderr every 60s
+    def _health_logger():
+        import time
+        while True:
+            time.sleep(60)
+            sessions = len(_agent_cache)
+            print(f"[Bridge Health] alive=true sessions={sessions}",
+                  file=sys.stderr, flush=True)
+
+    health_thread = threading.Thread(target=_health_logger, daemon=True)
+    health_thread.start()
+
     emit(0, "ready", text="Hermes bridge ready")
 
     handlers = {
         "chat": handle_chat,
         "configure": handle_configure,
+        "ping": handle_ping,
         "shutdown": handle_shutdown,
     }
 
