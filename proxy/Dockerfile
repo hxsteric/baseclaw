@@ -11,11 +11,15 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
 # ─── Clone and install Hermes Agent ───
-RUN git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /opt/hermes
+RUN git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /opt/hermes && \
+    echo "[Hermes] Clone successful — files:" && \
+    ls /opt/hermes/run_agent.py && \
+    echo "[Hermes] run_agent.py confirmed"
+
 WORKDIR /opt/hermes
-RUN uv venv && uv pip install -r requirements.txt 2>/dev/null || \
-    uv sync 2>/dev/null || \
-    echo "[Hermes] Install completed with warnings"
+RUN uv venv && \
+    (uv pip install -r requirements.txt 2>&1 || true) && \
+    echo "[Hermes] Python deps install attempted"
 
 # ─── Set up Node.js proxy ───
 WORKDIR /app
@@ -29,6 +33,9 @@ COPY tsconfig.json ./
 
 RUN npx tsc
 RUN npm prune --production
+
+# ─── Verify Hermes is still intact ───
+RUN echo "[Hermes] Final check:" && ls -la /opt/hermes/run_agent.py
 
 # ─── Environment ───
 ENV PORT=3001

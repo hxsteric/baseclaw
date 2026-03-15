@@ -312,10 +312,24 @@ export function getHermesBridge(): HermesBridge {
  */
 export function isHermesAvailable(): boolean {
   const hermesPath = process.env.HERMES_PATH || "/opt/hermes";
+  const checkPath = path.join(hermesPath, "run_agent.py");
   try {
     const fs = require("fs");
-    return fs.existsSync(path.join(hermesPath, "run_agent.py"));
-  } catch {
+    const dirExists = fs.existsSync(hermesPath);
+    const fileExists = fs.existsSync(checkPath);
+    console.log(`[Hermes] Check: HERMES_PATH=${hermesPath}, dir exists=${dirExists}, run_agent.py exists=${fileExists}`);
+    if (dirExists && !fileExists) {
+      // List what's actually in the directory for debugging
+      try {
+        const contents = fs.readdirSync(hermesPath).slice(0, 20);
+        console.log(`[Hermes] Directory contents: ${contents.join(", ")}`);
+      } catch (e: unknown) {
+        console.log(`[Hermes] Cannot list dir: ${e}`);
+      }
+    }
+    return fileExists;
+  } catch (e) {
+    console.error(`[Hermes] Availability check error:`, e);
     return false;
   }
 }
