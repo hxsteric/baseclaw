@@ -141,6 +141,7 @@ export function useChat(config: UserConfig | null, token: string | null, fid?: n
                     ...last,
                     content: data.message || last.content,
                     streaming: false,
+                    ...(data.attestation ? { attestation: data.attestation } : {}),
                   },
                 ];
               }

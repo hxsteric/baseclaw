@@ -1,5 +1,8 @@
 FROM node:22-slim
 
+# EigenCloud TEE requires root user
+USER root
+
 # ─── Install Python 3 + git (needed for Hermes Agent) ───
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

@@ -48,6 +48,7 @@ export function ApiKeyForm() {
   }
 
   const providers = [
+    { id: "venice" as const, label: "Venice AI (Private)" },
     { id: "anthropic" as const, label: "Anthropic" },
     { id: "openai" as const, label: "OpenAI" },
     { id: "openrouter" as const, label: "OpenRouter" },

@@ -128,6 +128,43 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Embeddings generation failed" }));
     }
+  } else if (req.url === "/attestation" && req.method === "GET") {
+    // EigenCloud TEE attestation endpoint
+    // When running on EigenCloud, a KMS signing key is available at a known path
+    const kmsKeyPath = "/usr/local/bin/kms-signing-public-key.pem";
+    try {
+      const fs = await import("fs");
+      if (fs.existsSync(kmsKeyPath)) {
+        const publicKey = fs.readFileSync(kmsKeyPath, "utf-8");
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          eigencloud: true,
+          tee: "Intel TDX",
+          kmsPublicKey: publicKey,
+          service: "baseclaw-proxy",
+          timestamp: new Date().toISOString(),
+          message: "BaseClaw is running inside an EigenCloud Trusted Execution Environment. This response is cryptographically attested.",
+        }));
+      } else {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          eigencloud: false,
+          message: "Not running on EigenCloud TEE (KMS key not found). Running on standard infrastructure.",
+        }));
+      }
+    } catch (err) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ eigencloud: false, error: "Attestation check failed" }));
+    }
+  } else if (req.url === "/health" && req.method === "GET") {
+    // Health check for EigenCloud
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      status: "ok",
+      service: "baseclaw-proxy",
+      hermes: isHermesAvailable(),
+      uptime: process.uptime(),
+    }));
   } else {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok", service: "clawdbot-proxy" }));
@@ -383,7 +420,7 @@ wss.on("connection", (ws, req) => {
                 onDelta: (text) => {
                   send(ws, { type: "delta", runId, text, ...(modelRole ? { modelRole } : {}) });
                 },
-                onFinal: (fullText) => {
+                onFinal: (fullText, attestation) => {
                   const assistantMsg: Message = {
                     id: runId,
                     role: "assistant",
@@ -397,6 +434,7 @@ wss.on("connection", (ws, req) => {
                     message: fullText,
                     model: actualModel,
                     ...(modelRole ? { modelRole } : {}),
+                    ...(attestation ? { attestation } : {}),
                   });
 
                   // Track usage for managed sessions

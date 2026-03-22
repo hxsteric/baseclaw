@@ -3,6 +3,14 @@ export interface ImageAttachment {
   mimeType: string;  // image/png, image/jpeg
 }
 
+export interface TeeAttestation {
+  verified: boolean;
+  model: string;
+  signingAddress?: string;
+  nonce: string;
+  teeProvider: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -10,6 +18,7 @@ export interface ChatMessage {
   timestamp: number;
   streaming?: boolean;
   images?: ImageAttachment[];
+  attestation?: TeeAttestation;
 }
 
 export type KeyMode = "byok" | "managed";
@@ -135,6 +144,8 @@ export const SUPPORTED_MODELS: Record<string, { label: string; provider: string;
     { label: "Venice Uncensored", provider: "venice", id: "venice-uncensored" },
     { label: "Qwen 3 235B", provider: "venice", id: "qwen3-235b-a22b-instruct-2507" },
     { label: "Grok 4.1 Fast", provider: "venice", id: "grok-41-fast" },
+    { label: "Qwen 3 122B TEE (Encrypted)", provider: "venice", id: "tee-qwen3-5-122b-a10b" },
+    { label: "Mistral 3.1 24B TEE (Encrypted)", provider: "venice", id: "tee-mistral-3.1-24b" },
   ],
   openrouter: [
     { label: "Claude Sonnet 4", provider: "openrouter", id: "anthropic/claude-sonnet-4" },

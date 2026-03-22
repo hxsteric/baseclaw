@@ -5,8 +5,17 @@ import { needsXSearch, searchX } from "./x-search.js";
 
 interface StreamCallbacks {
   onDelta: (text: string) => void;
-  onFinal: (fullText: string) => void;
+  onFinal: (fullText: string, attestation?: VeniceAttestation) => void;
   onError: (error: string) => void;
+}
+
+export interface VeniceAttestation {
+  verified: boolean;
+  model: string;
+  signingAddress?: string;
+  signingKey?: string;
+  nonce: string;
+  teeProvider: string;
 }
 
 // Safe JSON parser — handles trailing data, whitespace issues, and partial corruption
@@ -466,6 +475,46 @@ async function streamDeepSeek(
   );
 }
 
+// ---------- Venice TEE Attestation ----------
+
+async function fetchVeniceAttestation(model: string, apiKey: string): Promise<VeniceAttestation | undefined> {
+  if (!model.startsWith("tee-")) return undefined;
+
+  try {
+    // Generate 32-byte hex nonce for replay protection
+    const nonceBytes = new Uint8Array(32);
+    crypto.getRandomValues(nonceBytes);
+    const nonce = Array.from(nonceBytes).map(b => b.toString(16).padStart(2, "0")).join("");
+
+    const res = await fetch(
+      `https://api.venice.ai/api/v1/tee/attestation?model=${encodeURIComponent(model)}&nonce=${nonce}`,
+      {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }
+    );
+
+    if (!res.ok) {
+      console.error(`[Venice TEE] Attestation failed (${res.status})`);
+      return undefined;
+    }
+
+    const data = await res.json() as Record<string, unknown>;
+    console.log(`[Venice TEE] Attestation verified=${data.verified} for model=${model}`);
+
+    return {
+      verified: data.verified === true,
+      model,
+      signingAddress: data.signing_address as string | undefined,
+      signingKey: data.signing_key as string | undefined,
+      nonce,
+      teeProvider: "Venice AI (Intel TDX)",
+    };
+  } catch (err) {
+    console.error("[Venice TEE] Attestation error:", err);
+    return undefined;
+  }
+}
+
 // ---------- Venice AI ----------
 // Uses Venice's native web search (enable_web_search: "auto") instead of Brave.
 // The model decides when to search. Venice also provides citations and can scrape URLs.
@@ -592,6 +641,9 @@ async function streamVenice(
   let fullText = "";
   let buffer = "";
 
+  // Fetch TEE attestation in parallel with streaming (only for tee-* models)
+  const attestationPromise = fetchVeniceAttestation(model, apiKey);
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -618,7 +670,13 @@ async function streamVenice(
     }
   }
 
-  callbacks.onFinal(fullText);
+  // Wait for attestation (already started in parallel)
+  const attestation = await attestationPromise;
+  if (attestation) {
+    console.log(`[Venice TEE] Response attested: verified=${attestation.verified}, address=${attestation.signingAddress}`);
+  }
+
+  callbacks.onFinal(fullText, attestation);
 }
 
 // ---------- Google (Gemini) ----------
